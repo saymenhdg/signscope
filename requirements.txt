@@ -1,0 +1,11 @@
+torch>=2.7
+torchvision>=0.22
+opencv-contrib-python>=4.13
+numpy>=2.0
+scikit-learn>=1.5
+tqdm>=4.67
+pyyaml>=6.0
+huggingface_hub>=0.30
+mediapipe>=0.10.32
+fastapi>=0.116
+uvicorn>=0.35
