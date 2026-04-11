@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '../components/app-shell'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { apiRequest } from '../lib/api'
-import { useAuth } from '../lib/auth'
 import type { ProgressOverview } from '../lib/types'
 import { cn } from '../lib/utils'
 
@@ -17,7 +16,6 @@ const HEATMAP_LEVELS = [
 ]
 
 export function ProgressPage() {
-  const { token } = useAuth()
   const [overview, setOverview] = useState<ProgressOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +24,7 @@ export function ProgressPage() {
 
     async function load() {
       try {
-        const payload = await apiRequest<ProgressOverview>('/api/progress/overview', { token })
+        const payload = await apiRequest<ProgressOverview>('/api/progress/overview')
         if (!cancelled) {
           setOverview(payload)
         }
@@ -42,7 +40,7 @@ export function ProgressPage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
 
   return (
     <AppShell

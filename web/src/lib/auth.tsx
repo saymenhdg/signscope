@@ -7,10 +7,8 @@ import {
   useState,
 } from 'react'
 
-import { apiRequest, ApiError } from './api'
-import type { AuthResponse, User } from './types'
-
-const TOKEN_KEY = 'signspeak.auth.token'
+import { API_BASE, apiRequest } from './api'
+import type { AuthProvidersResponse, AuthResponse, AuthProviderOption, User } from './types'
 
 type Credentials = {
   email: string
@@ -23,41 +21,44 @@ type RegisterPayload = Credentials & {
 
 type AuthContextValue = {
   user: User | null
-  token: string | null
   loading: boolean
+  providers: AuthProviderOption[]
   signIn: (payload: Credentials) => Promise<User>
   signUp: (payload: RegisterPayload) => Promise<User>
   signOut: () => Promise<void>
+  restoreSession: () => Promise<User | null>
+  signInWithProvider: (providerId: string, nextPath?: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(() => window.localStorage.getItem(TOKEN_KEY))
+  const [providers, setProviders] = useState<AuthProviderOption[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
-    async function restoreSession() {
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
+    async function bootstrapAuth() {
       try {
-        const payload = await apiRequest<User>('/api/auth/me', { token })
-        if (!cancelled) {
-          setUser(payload)
+        const [providerResult, sessionResult] = await Promise.allSettled([
+          apiRequest<AuthProvidersResponse>('/api/auth/providers'),
+          apiRequest<User>('/api/auth/me'),
+        ])
+
+        if (cancelled) {
+          return
         }
-      } catch (error) {
-        if (!cancelled) {
-          if (error instanceof ApiError && error.status === 401) {
-            window.localStorage.removeItem(TOKEN_KEY)
-            setToken(null)
-            setUser(null)
-          }
+
+        if (providerResult.status === 'fulfilled') {
+          setProviders(providerResult.value.providers)
+        }
+
+        if (sessionResult.status === 'fulfilled') {
+          setUser(sessionResult.value)
+        } else {
+          setUser(null)
         }
       } finally {
         if (!cancelled) {
@@ -66,20 +67,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
     }
 
-    void restoreSession()
+    void bootstrapAuth()
 
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
+
+  async function restoreSession() {
+    try {
+      const payload = await apiRequest<User>('/api/auth/me')
+      setUser(payload)
+      return payload
+    } catch {
+      setUser(null)
+      return null
+    }
+  }
 
   async function completeAuth(path: '/api/auth/login' | '/api/auth/register', payload: Credentials | RegisterPayload) {
     const response = await apiRequest<AuthResponse>(path, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
-    window.localStorage.setItem(TOKEN_KEY, response.token)
-    setToken(response.token)
     setUser(response.user)
     return response.user
   }
@@ -93,31 +103,33 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function signOut() {
-    if (token) {
-      try {
-        await apiRequest('/api/auth/logout', {
-          method: 'POST',
-          token,
-        })
-      } catch {
-        // Best-effort logout.
-      }
+    try {
+      await apiRequest('/api/auth/logout', {
+        method: 'POST',
+      })
+    } catch {
+      // Best-effort logout.
     }
-    window.localStorage.removeItem(TOKEN_KEY)
-    setToken(null)
     setUser(null)
+  }
+
+  function signInWithProvider(providerId: string, nextPath = '/app/dashboard') {
+    const encodedNext = encodeURIComponent(nextPath)
+    window.location.assign(`${API_BASE}/api/auth/oauth/${providerId}/start?next=${encodedNext}`)
   }
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      token,
       loading,
+      providers,
       signIn,
       signUp,
       signOut,
+      restoreSession,
+      signInWithProvider,
     }),
-    [loading, token, user],
+    [loading, providers, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -130,3 +142,4 @@ export function useAuth() {
   }
   return context
 }
+

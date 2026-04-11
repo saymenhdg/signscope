@@ -17,6 +17,7 @@ import {
   useTransition,
 } from 'react'
 
+import { LearnSubnav } from '../components/learning/learn-subnav'
 import { AppShell } from '../components/app-shell'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
@@ -33,7 +34,17 @@ const LIVE_STABLE_FRAMES = 3
 const LIVE_CONFIDENCE_THRESHOLD = 0.45
 const LIVE_MARGIN_THRESHOLD = 0.1
 
-export function LivePage() {
+type LivePageProps = {
+  title?: string
+  subtitle?: string
+  showLearnSubnav?: boolean
+}
+
+export function LivePage({
+  title = 'Live Translation Workspace',
+  subtitle = 'This page reuses the stitched live-translation layout and connects it directly to the FastAPI alphabet predictor.',
+  showLearnSubnav = false,
+}: LivePageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -84,6 +95,7 @@ export function LivePage() {
       const response = await fetch(`${API_BASE}/api/alphabet/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           image_base64: imageBase64,
           target_letter: targetLetter,
@@ -299,9 +311,11 @@ export function LivePage() {
 
   return (
     <AppShell
-      title="Live Translation Workspace"
-      subtitle="This page reuses the stitched live-translation layout and connects it directly to the FastAPI alphabet predictor."
+      title={title}
+      subtitle={subtitle}
     >
+      {showLearnSubnav ? <LearnSubnav className="mb-6" /> : null}
+
       <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-outline-variant/15 bg-surface-container-low/90 px-6 py-4 shadow-sm">

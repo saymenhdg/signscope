@@ -9,9 +9,10 @@ import {
   UserCircle2,
 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 
-import { Button } from './ui/button'
+import { LEARN_SUBNAV_ITEMS } from './learning/learn-subnav'
+import { Button, buttonVariants } from './ui/button'
 import { useAuth } from '../lib/auth'
 import { cn } from '../lib/utils'
 
@@ -30,6 +31,8 @@ const NAV_ITEMS = [
 
 export function AppShell({ children, title, subtitle }: AppShellProps) {
   const { user, signOut } = useAuth()
+  const location = useLocation()
+  const isLearnSection = location.pathname === '/app/learn' || location.pathname.startsWith('/app/learn/')
 
   return (
     <div className="min-h-screen bg-background text-on-background">
@@ -44,42 +47,86 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
           </div>
         </div>
 
-        <div className="mb-8 rounded-3xl border border-outline-variant/20 bg-surface-container p-4">
+        <NavLink
+          to="/app/profile"
+          className={({ isActive }) =>
+            cn(
+              'mb-8 rounded-3xl border border-outline-variant/20 bg-surface-container p-4 transition-colors hover:border-secondary/15 hover:bg-surface-container-high',
+              isActive && 'border-secondary/20 bg-surface-container-high',
+            )
+          }
+        >
           <div className="flex items-center gap-4">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 text-secondary">
-              <span className="font-headline text-lg font-black">
-                {user?.display_name
-                  .split(' ')
-                  .map((part) => part[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase() ?? 'SS'}
-              </span>
-            </div>
-            <div className="min-w-0">
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.display_name}
+                className="size-12 rounded-2xl border border-outline-variant/20 object-cover"
+              />
+            ) : (
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 text-secondary">
+                <span className="font-headline text-lg font-black">
+                  {user?.display_name
+                    .split(' ')
+                    .map((part) => part[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase() ?? 'SS'}
+                </span>
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
               <p className="truncate font-headline text-sm font-bold text-on-surface">{user?.display_name}</p>
               <p className="truncate text-xs text-secondary">{user?.email}</p>
             </div>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+              Edit
+            </span>
           </div>
-        </div>
+        </NavLink>
 
         <nav className="flex flex-1 flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
+            const showLearnChildren = item.label === 'Learn' && isLearnSection
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container hover:text-on-surface',
-                    isActive && 'bg-gradient-to-r from-primary/10 to-transparent text-secondary ring-1 ring-secondary/10',
-                  )
-                }
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </NavLink>
+              <div key={item.to}>
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container hover:text-on-surface',
+                      isActive && 'bg-gradient-to-r from-primary/10 to-transparent text-secondary ring-1 ring-secondary/10',
+                    )
+                  }
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </NavLink>
+
+                {showLearnChildren ? (
+                  <div className="ml-6 mt-2 grid gap-1 border-l border-outline-variant/15 pl-4">
+                    {LEARN_SUBNAV_ITEMS.map((subItem) => {
+                      const SubIcon = subItem.icon
+                      return (
+                        <NavLink
+                          key={subItem.to}
+                          to={subItem.to}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface',
+                              isActive && 'bg-secondary/10 text-secondary',
+                            )
+                          }
+                        >
+                          <SubIcon className="size-3.5" />
+                          {subItem.label}
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             )
           })}
         </nav>
@@ -104,10 +151,21 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
               <p className="mt-1 max-w-2xl text-sm text-on-surface-variant sm:text-base">{subtitle}</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden rounded-full border border-outline-variant/25 bg-surface-container px-4 py-2 text-sm text-on-surface-variant md:flex md:items-center md:gap-2">
+              <NavLink
+                to="/app/profile"
+                className={({ isActive }) =>
+                  cn(
+                    'hidden rounded-full border border-outline-variant/25 bg-surface-container px-4 py-2 text-sm text-on-surface-variant transition-colors md:flex md:items-center md:gap-2',
+                    isActive && 'border-secondary/15 text-secondary',
+                  )
+                }
+              >
                 <UserCircle2 className="size-4 text-secondary" />
                 <span>{user?.display_name}</span>
-              </div>
+              </NavLink>
+              <NavLink to="/app/profile" className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'lg:hidden')}>
+                <UserCircle2 className="size-4" />
+              </NavLink>
               <Button
                 variant="secondary"
                 size="sm"

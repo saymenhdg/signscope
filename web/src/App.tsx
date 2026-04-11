@@ -8,8 +8,10 @@ import { AuthPage } from './pages/AuthPage'
 import { AlphabetLessonPage } from './pages/AlphabetLessonPage'
 import { LandingPage } from './pages/LandingPage'
 import { LearningHubPage } from './pages/LearningHubPage'
+import { LearningTestPage } from './pages/LearningTestPage'
 import { LivePage } from './pages/LivePage'
 import { ProgressPage } from './pages/ProgressPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { UploadPage } from './pages/UploadPage'
 import { WordLessonPage } from './pages/WordLessonPage'
 
@@ -77,9 +79,11 @@ export default function App() {
         <Route path="learn" element={<LearningHubPage />} />
         <Route path="learn/alphabet" element={<AlphabetLessonPage />} />
         <Route path="learn/words" element={<WordLessonPage />} />
+        <Route path="learn/test" element={<LearningTestPage />} />
         <Route path="live" element={<LivePage />} />
         <Route path="upload" element={<UploadPage />} />
         <Route path="progress" element={<ProgressPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

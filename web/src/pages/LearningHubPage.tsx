@@ -2,18 +2,17 @@ import { ArrowRight, BookOpenCheck, BrainCircuit, Camera, Sparkles, Type } from 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { LearnSubnav } from '../components/learning/learn-subnav'
 import { AppShell } from '../components/app-shell'
 import { Badge } from '../components/ui/badge'
 import { buttonVariants } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { Progress } from '../components/ui/progress'
 import { apiRequest } from '../lib/api'
-import { useAuth } from '../lib/auth'
 import type { AlphabetLessonResponse, ProgressOverview, WordLessonResponse } from '../lib/types'
 import { cn } from '../lib/utils'
 
 export function LearningHubPage() {
-  const { token } = useAuth()
   const [progress, setProgress] = useState<ProgressOverview | null>(null)
   const [alphabet, setAlphabet] = useState<AlphabetLessonResponse | null>(null)
   const [words, setWords] = useState<WordLessonResponse | null>(null)
@@ -25,9 +24,9 @@ export function LearningHubPage() {
     async function load() {
       try {
         const [progressPayload, alphabetPayload, wordPayload] = await Promise.all([
-          apiRequest<ProgressOverview>('/api/progress/overview', { token }),
-          apiRequest<AlphabetLessonResponse>('/api/learn/alphabet', { token }),
-          apiRequest<WordLessonResponse>('/api/learn/words', { token }),
+          apiRequest<ProgressOverview>('/api/progress/overview'),
+          apiRequest<AlphabetLessonResponse>('/api/learn/alphabet'),
+          apiRequest<WordLessonResponse>('/api/learn/words'),
         ])
         if (!cancelled) {
           setProgress(progressPayload)
@@ -46,7 +45,7 @@ export function LearningHubPage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
 
   const alphabetCount = alphabet?.sequence.length ?? 0
   const wordCount = words?.items.length ?? 0
@@ -58,6 +57,8 @@ export function LearningHubPage() {
       title="Learning Hub"
       subtitle="Move between a live alphabet coach and a curated core-word library. The alphabet track confirms signs in real time and advances automatically when the model is satisfied."
     >
+      <LearnSubnav className="mb-6" />
+
       {error && (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
       )}
@@ -102,6 +103,11 @@ export function LearningHubPage() {
               detail={`${wordCount} reliable words with video references and phrase drills`}
             />
             <FocusRow
+              icon={Camera}
+              title="Live Test"
+              detail="Run a focused camera-based check and see whether you can hold the target letter under the model gate."
+            />
+            <FocusRow
               icon={BrainCircuit}
               title="Progress Loop"
               detail="Completed alphabet sessions are saved back into the FastAPI account data."
@@ -110,7 +116,7 @@ export function LearningHubPage() {
         </Card>
       </section>
 
-      <section className="mt-8 grid gap-8 lg:grid-cols-2">
+      <section className="mt-8 grid gap-8 xl:grid-cols-3">
         <TrackCard
           title="Alphabet Coach"
           description="Launch the live camera tutor, line your hand up with the transparent guide, and let the model advance letter by letter."
@@ -133,6 +139,18 @@ export function LearningHubPage() {
           masteredLabel={`${wordCount} words`}
           icon={BookOpenCheck}
           accent="from-secondary/80 to-primary/65"
+        />
+
+        <TrackCard
+          title="Skill Test"
+          description="Switch to assessment mode and test how consistently you can hit a target letter without the lesson auto-advance loop."
+          detail="Assessment"
+          cta="Open test"
+          href="/app/learn/test"
+          percent={Math.max(progress?.totals.progress_percent ?? 0, progress?.weekly_accuracy.at(-1) ?? 0)}
+          masteredLabel="Assessment readiness"
+          icon={BrainCircuit}
+          accent="from-primary/75 to-secondary/75"
         />
       </section>
 

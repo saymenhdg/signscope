@@ -1,8 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8000'
 
-type RequestOptions = RequestInit & {
-  token?: string | null
-}
+type RequestOptions = RequestInit
 
 export class ApiError extends Error {
   status: number
@@ -18,13 +16,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
-  if (options.token) {
-    headers.set('Authorization', `Bearer ${options.token}`)
-  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
+    credentials: options.credentials ?? 'include',
   })
 
   if (!response.ok) {

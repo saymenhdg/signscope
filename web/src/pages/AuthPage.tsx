@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Chrome, Github, Sparkles } from 'lucide-react'
+import { type ReactNode, useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { buttonVariants } from '../components/ui/button'
 import { useAuth } from '../lib/auth'
@@ -15,7 +15,8 @@ type AuthPageProps = {
 export function AuthPage({ mode }: AuthPageProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signIn, signUp } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { signIn, signInWithProvider, signUp, providers } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,6 +26,13 @@ export function AuthPage({ mode }: AuthPageProps) {
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app/dashboard'
   const isRegister = mode === 'register'
+  const authError = searchParams.get('authError')
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError)
+    }
+  }, [authError])
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -41,11 +49,11 @@ export function AuthPage({ mode }: AuthPageProps) {
         if (isRegister) {
           await signUp({
             display_name: displayName.trim(),
-            email,
+            email: email.trim(),
             password,
           })
         } else {
-          await signIn({ email, password })
+          await signIn({ email: email.trim(), password })
         }
         navigate(redirectTo, { replace: true })
       } catch (submitError) {
@@ -79,17 +87,17 @@ export function AuthPage({ mode }: AuthPageProps) {
               </p>
               <p className="max-w-xl text-lg leading-8 text-on-surface-variant">
                 {isRegister
-                  ? 'Register once to unlock live translation, upload review, and progress analytics inside the same workspace.'
-                  : 'Sign in to continue training your alphabet model, review recent translations, and monitor progress.'}
+                  ? 'Register once to unlock live translation, lesson tracking, upload review, and progress analytics inside one workspace.'
+                  : 'Sign in to continue training your alphabet model, review recent translations, and monitor learning progress.'}
               </p>
             </div>
 
             <div className="grid gap-4 rounded-[30px] border border-outline-variant/20 bg-surface-container-low/70 p-6 backdrop-blur-xl">
               <div className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Inside your account</div>
               <div className="grid gap-4">
-                <FeaturePoint label="Live webcam recognition with FastAPI-backed predictions" />
-                <FeaturePoint label="Dashboard, upload queue, and progress analytics in one place" />
-                <FeaturePoint label="Session-based authentication with protected routes" />
+                <FeaturePoint label="FastAPI + PostgreSQL session-backed workspace state" />
+                <FeaturePoint label="Dashboard, upload queue, learning coach, and progress analytics in one place" />
+                <FeaturePoint label="Email/password plus Google and GitHub sign-in when provider keys are configured" />
               </div>
             </div>
           </div>
@@ -112,19 +120,52 @@ export function AuthPage({ mode }: AuthPageProps) {
               </div>
             </div>
 
+            {providers.length > 0 ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {providers.map((provider) => {
+                    const Icon = provider.id === 'github' ? Github : Chrome
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => {
+                          setError(null)
+                          signInWithProvider(provider.id, redirectTo)
+                        }}
+                        className="flex h-14 items-center justify-center gap-3 rounded-2xl border border-outline-variant/25 bg-surface-container px-4 text-sm font-semibold text-on-surface transition-colors hover:border-secondary/35 hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        <Icon className="size-4 text-secondary" />
+                        <span>{isRegister ? `Continue with ${provider.label}` : `Sign in with ${provider.label}`}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="my-6 flex items-center gap-4">
+                  <div className="h-px flex-1 bg-outline-variant/20" />
+                  <span className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">
+                    Or use email
+                  </span>
+                  <div className="h-px flex-1 bg-outline-variant/20" />
+                </div>
+              </>
+            ) : null}
+
             <form className="space-y-5" onSubmit={handleSubmit}>
-              {isRegister && (
+              {isRegister ? (
                 <Field label="Display name">
-                <input
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  required
-                  disabled={isSubmitting}
-                  className={inputClassName}
-                  placeholder="Alex Chen"
-                />
+                  <input
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    required
+                    disabled={isSubmitting}
+                    className={inputClassName}
+                    placeholder="Alex Chen"
+                  />
                 </Field>
-              )}
+              ) : null}
 
               <Field label="Email">
                 <input
@@ -150,7 +191,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                 />
               </Field>
 
-              {isRegister && (
+              {isRegister ? (
                 <Field label="Confirm password">
                   <input
                     value={confirmPassword}
@@ -162,13 +203,13 @@ export function AuthPage({ mode }: AuthPageProps) {
                     placeholder="Repeat your password"
                   />
                 </Field>
-              )}
+              ) : null}
 
-              {error && (
+              {error ? (
                 <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
                   {error}
                 </div>
-              )}
+              ) : null}
 
               <button
                 type="submit"
@@ -216,3 +257,4 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const inputClassName =
   'h-14 rounded-2xl border border-outline-variant/25 bg-surface-container px-4 text-base text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-secondary/60'
+

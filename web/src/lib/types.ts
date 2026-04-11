@@ -2,13 +2,25 @@ export type User = {
   id: number
   email: string
   display_name: string
+  age: number | null
+  bio: string | null
+  avatar_url: string | null
   created_at: string
 }
 
 export type AuthResponse = {
-  token: string
   expires_at: string
   user: User
+}
+
+export type AuthProviderOption = {
+  id: string
+  label: string
+  start_url: string
+}
+
+export type AuthProvidersResponse = {
+  providers: AuthProviderOption[]
 }
 
 export type HealthResponse = {
@@ -17,6 +29,7 @@ export type HealthResponse = {
   image_model_ready: boolean
   landmark_model_ready: boolean
   labels: string[]
+  oauth_providers: string[]
 }
 
 export type DashboardOverview = {

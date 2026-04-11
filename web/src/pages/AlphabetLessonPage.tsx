@@ -21,13 +21,13 @@ import {
 } from 'react'
 
 import { HandGuideOverlay } from '../components/learning/HandGuideOverlay'
+import { LearnSubnav } from '../components/learning/learn-subnav'
 import { AppShell } from '../components/app-shell'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { Progress } from '../components/ui/progress'
 import { apiRequest, API_BASE } from '../lib/api'
-import { useAuth } from '../lib/auth'
 import type { AlphabetLessonResponse, HealthResponse, PredictResponse } from '../lib/types'
 import { cn } from '../lib/utils'
 
@@ -37,7 +37,6 @@ const LIVE_CAPTURE_QUALITY = 0.84
 const ADVANCE_DELAY_MS = 900
 
 export function AlphabetLessonPage() {
-  const { token } = useAuth()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -107,6 +106,7 @@ export function AlphabetLessonPage() {
       const response = await fetch(`${API_BASE}/api/alphabet/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           image_base64: imageBase64,
           target_letter: currentItem.label,
@@ -172,7 +172,7 @@ export function AlphabetLessonPage() {
   async function loadLesson() {
     try {
       const [lessonPayload, healthPayload] = await Promise.all([
-        apiRequest<AlphabetLessonResponse>('/api/learn/alphabet', { token }),
+        apiRequest<AlphabetLessonResponse>('/api/learn/alphabet'),
         apiRequest<HealthResponse>('/api/health'),
       ])
       setLesson(lessonPayload)
@@ -314,7 +314,7 @@ export function AlphabetLessonPage() {
     stopCamera()
     setLessonComplete(true)
     setCoachMessage('Lesson complete. Your session has been captured in the learning history.')
-    if (sessionRecordedRef.current || !token) {
+    if (sessionRecordedRef.current) {
       return
     }
 
@@ -325,7 +325,6 @@ export function AlphabetLessonPage() {
     try {
       await apiRequest('/api/learn/session', {
         method: 'POST',
-        token,
         body: JSON.stringify({
           track: 'alphabet',
           unit_title: 'Alphabet Coach',
@@ -408,6 +407,8 @@ export function AlphabetLessonPage() {
       title="Alphabet Coach"
       subtitle="Match the transparent hand guide with your own hand, hold the pose, and let the model automatically advance when the sign is confidently confirmed."
     >
+      <LearnSubnav className="mb-6" />
+
       <section className="grid gap-8 xl:grid-cols-[1.18fr_0.82fr]">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-[30px] border border-outline-variant/15 bg-surface-container-low/90 px-6 py-4 shadow-sm">

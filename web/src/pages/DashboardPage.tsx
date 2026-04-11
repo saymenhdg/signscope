@@ -7,7 +7,6 @@ import { Badge } from '../components/ui/badge'
 import { buttonVariants } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { apiRequest } from '../lib/api'
-import { useAuth } from '../lib/auth'
 import type { DashboardOverview } from '../lib/types'
 import { cn } from '../lib/utils'
 
@@ -43,7 +42,6 @@ const QUICK_ACTIONS = [
 ]
 
 export function DashboardPage() {
-  const { token } = useAuth()
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,7 +50,7 @@ export function DashboardPage() {
 
     async function load() {
       try {
-        const payload = await apiRequest<DashboardOverview>('/api/dashboard/overview', { token })
+        const payload = await apiRequest<DashboardOverview>('/api/dashboard/overview')
         if (!cancelled) {
           setOverview(payload)
         }
@@ -68,7 +66,7 @@ export function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
 
   return (
     <AppShell

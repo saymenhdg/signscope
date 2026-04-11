@@ -1,18 +1,17 @@
 import { BookOpenCheck, CheckCircle2, PlayCircle, Sparkles, WandSparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { LearnSubnav } from '../components/learning/learn-subnav'
 import { AppShell } from '../components/app-shell'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { Progress } from '../components/ui/progress'
 import { apiRequest, API_BASE } from '../lib/api'
-import { useAuth } from '../lib/auth'
 import type { WordLessonItem, WordLessonResponse } from '../lib/types'
 import { cn } from '../lib/utils'
 
 export function WordLessonPage() {
-  const { token } = useAuth()
   const [payload, setPayload] = useState<WordLessonResponse | null>(null)
   const [reviewed, setReviewed] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +21,7 @@ export function WordLessonPage() {
 
     async function load() {
       try {
-        const response = await apiRequest<WordLessonResponse>('/api/learn/words', { token })
+        const response = await apiRequest<WordLessonResponse>('/api/learn/words')
         if (!cancelled) {
           setPayload(response)
         }
@@ -38,7 +37,7 @@ export function WordLessonPage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
 
   const reviewedSet = new Set(reviewed)
   const total = payload?.items.length ?? 0
@@ -53,6 +52,8 @@ export function WordLessonPage() {
       title="Word Studio"
       subtitle="Study the current reliable vocabulary set through looping reference clips, simple phrase ladders, and focused rehearsal notes. This page is for memorization and review; the alphabet coach is still the live validated track."
     >
+      <LearnSubnav className="mb-6" />
+
       {error && (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
       )}
