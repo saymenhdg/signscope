@@ -19,6 +19,24 @@
   --outline-variant: #464554;
 }
 
+.light {
+  --background: #f4f4fb;
+  --surface: #ffffff;
+  --surface-low: #f0f0f8;
+  --surface-high: #e8e8f4;
+  --surface-highest: #dddde9;
+  --foreground: #1a1b2e;
+  --foreground-muted: #5c5b6e;
+  --primary: #4a50c7;
+  --primary-container: #6c73e8;
+  --secondary: #0d9e8a;
+  --secondary-fixed: #10b89f;
+  --tertiary: #d97a30;
+  --error: #c4453a;
+  --outline: #7a7988;
+  --outline-variant: #c8c6d4;
+}
+
 @theme inline {
   --font-sans: 'Inter', ui-sans-serif, sans-serif;
   --font-headline: 'Manrope', ui-sans-serif, sans-serif;
@@ -39,6 +57,67 @@
   --color-error: var(--error);
   --color-outline: var(--outline);
   --color-outline-variant: var(--outline-variant);
+
+  --animate-in: enter 0.2s ease-out;
+  --animate-out: exit 0.15s ease-in forwards;
+  --animate-skeleton: skeleton-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes exit {
+    to {
+      opacity: 0;
+      transform: translateY(4px) scale(0.97);
+    }
+  }
+
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @keyframes slide-in-from-right-full {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes slide-out-to-right-full {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+  }
+
+  @keyframes fade-in-0 {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes zoom-in-95 {
+    from { transform: scale(0.95); }
+    to { transform: scale(1); }
+  }
+
+  @keyframes celebration {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.15) rotate(-3deg); }
+    50% { transform: scale(1.2) rotate(3deg); }
+    75% { transform: scale(1.15) rotate(-2deg); }
+    100% { transform: scale(1); }
+  }
+
+  --animate-slide-in-from-right-full: slide-in-from-right-full 0.2s ease-out;
+  --animate-slide-out-to-right-full: slide-out-to-right-full 0.15s ease-in;
+  --animate-fade-in-0: fade-in-0 0.15s ease-out;
+  --animate-zoom-in-95: zoom-in-95 0.15s ease-out;
+  --animate-celebration: celebration 0.5s ease-in-out;
 }
 
 @layer base {
@@ -59,7 +138,15 @@
     background:
       radial-gradient(circle at top left, rgba(189, 194, 255, 0.12), transparent 28%),
       radial-gradient(circle at 85% 0%, rgba(68, 226, 205, 0.08), transparent 26%),
-      linear-gradient(180deg, #0b1326 0%, #091122 100%);
+      linear-gradient(180deg, var(--background) 0%, var(--background) 100%);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .light body {
+    background:
+      radial-gradient(circle at top left, rgba(74, 80, 199, 0.06), transparent 28%),
+      radial-gradient(circle at 85% 0%, rgba(13, 158, 138, 0.04), transparent 26%),
+      linear-gradient(180deg, var(--background) 0%, var(--background) 100%);
   }
 
   #root {

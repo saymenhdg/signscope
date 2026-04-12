@@ -72,6 +72,22 @@ export default function App() {
           </PublicOnlyRoute>
         }
       />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicOnlyRoute>
+            <AuthPage mode="forgot" />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicOnlyRoute>
+            <AuthPage mode="reset" />
+          </PublicOnlyRoute>
+        }
+      />
 
       <Route path="/app" element={<ProtectedRoutes />}>
         <Route index element={<Navigate to="/app/dashboard" replace />} />

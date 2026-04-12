@@ -6,7 +6,7 @@ import { buttonVariants } from '../components/ui/button'
 import { useAuth } from '../lib/auth'
 import { cn } from '../lib/utils'
 
-type AuthMode = 'login' | 'register'
+type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
 
 type AuthPageProps = {
   mode: AuthMode
@@ -16,17 +16,22 @@ export function AuthPage({ mode }: AuthPageProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { signIn, signInWithProvider, signUp, providers } = useAuth()
+  const { signIn, signInWithProvider, signUp, requestPasswordReset, resetPassword, providers } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [resetUrl, setResetUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app/dashboard'
   const isRegister = mode === 'register'
+  const isForgot = mode === 'forgot'
+  const isReset = mode === 'reset'
   const authError = searchParams.get('authError')
+  const resetToken = searchParams.get('token') ?? ''
 
   useEffect(() => {
     if (authError) {
@@ -34,12 +39,25 @@ export function AuthPage({ mode }: AuthPageProps) {
     }
   }, [authError])
 
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setMessage('Password updated. Sign in with your new password.')
+    }
+  }, [searchParams])
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setMessage(null)
+    setResetUrl(null)
 
-    if (isRegister && password !== confirmPassword) {
+    if ((isRegister || isReset) && password !== confirmPassword) {
       setError('Passwords do not match.')
+      return
+    }
+
+    if (isReset && !resetToken) {
+      setError('This reset link is missing a token. Request a new password reset link.')
       return
     }
 
@@ -52,9 +70,24 @@ export function AuthPage({ mode }: AuthPageProps) {
             email: email.trim(),
             password,
           })
-        } else {
-          await signIn({ email: email.trim(), password })
+          navigate(redirectTo, { replace: true })
+          return
         }
+
+        if (isForgot) {
+          const response = await requestPasswordReset(email.trim())
+          setMessage(response.detail)
+          setResetUrl(response.reset_url)
+          return
+        }
+
+        if (isReset) {
+          await resetPassword(resetToken, password)
+          navigate('/login?reset=success', { replace: true })
+          return
+        }
+
+        await signIn({ email: email.trim(), password })
         navigate(redirectTo, { replace: true })
       } catch (submitError) {
         setError(submitError instanceof Error ? submitError.message : 'Authentication failed.')
@@ -62,6 +95,40 @@ export function AuthPage({ mode }: AuthPageProps) {
         setIsSubmitting(false)
       }
     })()
+  }
+
+  function title() {
+    if (isRegister) return 'Register'
+    if (isForgot) return 'Forgot Password'
+    if (isReset) return 'Reset Password'
+    return 'Sign In'
+  }
+
+  function subtitle() {
+    if (isRegister) return 'Start your workspace setup.'
+    if (isForgot) return 'Generate a reset link for your account.'
+    if (isReset) return 'Set a new password for your account.'
+    return 'Continue where you left off.'
+  }
+
+  function heroTitle() {
+    if (isRegister) return 'Create your translation workspace.'
+    if (isForgot) return 'Recover access to your workspace.'
+    if (isReset) return 'Set a new password and continue.'
+    return 'Welcome back to your sign lab.'
+  }
+
+  function heroText() {
+    if (isRegister) {
+      return 'Register once to unlock live translation, lesson tracking, upload review, and progress analytics inside one workspace.'
+    }
+    if (isForgot) {
+      return 'Request a password reset link for your account. In local development, the app shows the reset URL directly because outbound email is not configured.'
+    }
+    if (isReset) {
+      return 'Choose a strong new password, then sign back in to continue training, reviewing, and tracking progress.'
+    }
+    return 'Sign in to continue training your alphabet model, review recent translations, and monitor learning progress.'
   }
 
   return (
@@ -82,14 +149,8 @@ export function AuthPage({ mode }: AuthPageProps) {
             </div>
 
             <div className="space-y-6">
-              <p className="font-headline text-6xl font-extrabold leading-none tracking-tight text-on-surface">
-                {isRegister ? 'Create your translation workspace.' : 'Welcome back to your sign lab.'}
-              </p>
-              <p className="max-w-xl text-lg leading-8 text-on-surface-variant">
-                {isRegister
-                  ? 'Register once to unlock live translation, lesson tracking, upload review, and progress analytics inside one workspace.'
-                  : 'Sign in to continue training your alphabet model, review recent translations, and monitor learning progress.'}
-              </p>
+              <p className="font-headline text-6xl font-extrabold leading-none tracking-tight text-on-surface">{heroTitle()}</p>
+              <p className="max-w-xl text-lg leading-8 text-on-surface-variant">{heroText()}</p>
             </div>
 
             <div className="grid gap-4 rounded-[30px] border border-outline-variant/20 bg-surface-container-low/70 p-6 backdrop-blur-xl">
@@ -111,16 +172,12 @@ export function AuthPage({ mode }: AuthPageProps) {
                 Back
               </Link>
               <div className="text-right">
-                <p className="font-headline text-3xl font-black text-on-surface">
-                  {isRegister ? 'Register' : 'Sign In'}
-                </p>
-                <p className="text-sm text-on-surface-variant">
-                  {isRegister ? 'Start your workspace setup.' : 'Continue where you left off.'}
-                </p>
+                <p className="font-headline text-3xl font-black text-on-surface">{title()}</p>
+                <p className="text-sm text-on-surface-variant">{subtitle()}</p>
               </div>
             </div>
 
-            {providers.length > 0 ? (
+            {providers.length > 0 && !isForgot && !isReset ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {providers.map((provider) => {
@@ -145,9 +202,7 @@ export function AuthPage({ mode }: AuthPageProps) {
 
                 <div className="my-6 flex items-center gap-4">
                   <div className="h-px flex-1 bg-outline-variant/20" />
-                  <span className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">
-                    Or use email
-                  </span>
+                  <span className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">Or use email</span>
                   <div className="h-px flex-1 bg-outline-variant/20" />
                 </div>
               </>
@@ -167,31 +222,35 @@ export function AuthPage({ mode }: AuthPageProps) {
                 </Field>
               ) : null}
 
-              <Field label="Email">
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  type="email"
-                  required
-                  disabled={isSubmitting}
-                  className={inputClassName}
-                  placeholder="you@example.com"
-                />
-              </Field>
+              {!isReset ? (
+                <Field label="Email">
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    required
+                    disabled={isSubmitting}
+                    className={inputClassName}
+                    placeholder="you@example.com"
+                  />
+                </Field>
+              ) : null}
 
-              <Field label="Password">
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type="password"
-                  required
-                  disabled={isSubmitting}
-                  className={inputClassName}
-                  placeholder="Minimum 8 characters"
-                />
-              </Field>
+              {!isForgot ? (
+                <Field label={isReset ? 'New password' : 'Password'}>
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    type="password"
+                    required
+                    disabled={isSubmitting}
+                    className={inputClassName}
+                    placeholder="Minimum 8 characters"
+                  />
+                </Field>
+              ) : null}
 
-              {isRegister ? (
+              {isRegister || isReset ? (
                 <Field label="Confirm password">
                   <input
                     value={confirmPassword}
@@ -205,31 +264,79 @@ export function AuthPage({ mode }: AuthPageProps) {
                 </Field>
               ) : null}
 
+              {message ? (
+                <div className="rounded-2xl border border-secondary/25 bg-secondary/10 px-4 py-3 text-sm text-secondary">
+                  <p>{message}</p>
+                  {resetUrl ? (
+                    <a href={resetUrl} className="mt-2 inline-block font-semibold underline">
+                      Open reset page
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+
               {error ? (
                 <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
                   {error}
                 </div>
               ) : null}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={cn(buttonVariants({ size: 'lg' }), 'w-full rounded-2xl')}
-              >
-                <span>{isSubmitting ? 'Processing...' : isRegister ? 'Create Account' : 'Sign In'}</span>
+              <button type="submit" disabled={isSubmitting} className={cn(buttonVariants({ size: 'lg' }), 'w-full rounded-2xl')}>
+                <span>
+                  {isSubmitting
+                    ? 'Processing...'
+                    : isRegister
+                      ? 'Create Account'
+                      : isForgot
+                        ? 'Generate Reset Link'
+                        : isReset
+                          ? 'Update Password'
+                          : 'Sign In'}
+                </span>
                 <ArrowRight className="size-4" />
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-on-surface-variant">
-              {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <Link
-                to={isRegister ? '/login' : '/register'}
-                className="font-semibold text-secondary transition-colors hover:text-secondary-fixed"
-              >
-                {isRegister ? 'Sign in' : 'Create one'}
-              </Link>
-            </p>
+            {mode === 'login' ? (
+              <div className="mt-6 space-y-3 text-center text-sm text-on-surface-variant">
+                <Link to="/forgot-password" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                  Forgot password?
+                </Link>
+                <p>
+                  Don&apos;t have an account?{' '}
+                  <Link to="/register" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                    Create one
+                  </Link>
+                </p>
+              </div>
+            ) : null}
+
+            {mode === 'register' ? (
+              <p className="mt-6 text-center text-sm text-on-surface-variant">
+                Already have an account?{' '}
+                <Link to="/login" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                  Sign in
+                </Link>
+              </p>
+            ) : null}
+
+            {mode === 'forgot' ? (
+              <p className="mt-6 text-center text-sm text-on-surface-variant">
+                Remembered your password?{' '}
+                <Link to="/login" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                  Go back to sign in
+                </Link>
+              </p>
+            ) : null}
+
+            {mode === 'reset' ? (
+              <p className="mt-6 text-center text-sm text-on-surface-variant">
+                Need a new link?{' '}
+                <Link to="/forgot-password" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                  Request another reset
+                </Link>
+              </p>
+            ) : null}
           </div>
         </section>
       </div>
@@ -257,4 +364,3 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const inputClassName =
   'h-14 rounded-2xl border border-outline-variant/25 bg-surface-container px-4 text-base text-on-surface outline-none transition-colors placeholder:text-on-surface-variant/70 focus:border-secondary/60'
-

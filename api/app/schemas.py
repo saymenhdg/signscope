@@ -29,6 +29,21 @@ class AuthResponse(BaseModel):
     user: UserResponse
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class ForgotPasswordResponse(BaseModel):
+    status: str
+    detail: str
+    reset_url: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=16, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
 class AuthProviderOption(BaseModel):
     id: str
     label: str

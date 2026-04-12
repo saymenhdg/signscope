@@ -11,9 +11,12 @@ from api.app.schemas import (
     AuthProvidersResponse,
     AuthRequest,
     AuthResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     MessageResponse,
     ProfileUpdateRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     UserResponse,
 )
 from api.app.services.auth_service import AuthService
@@ -60,6 +63,29 @@ def login(
     user, token, expires_at = auth_service.authenticate_user(email=request.email, password=request.password)
     auth_service.attach_session_cookie(response, token, expires_at)
     return AuthResponse(expires_at=expires_at.isoformat(), user=auth_service.user_response(user))
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> ForgotPasswordResponse:
+    token = auth_service.request_password_reset(email=request.email)
+    reset_url = auth_service.password_reset_url(token) if token and auth_service.settings.app_env != "production" else None
+    return ForgotPasswordResponse(
+        status="ok",
+        detail="If that email exists, a password reset link has been generated.",
+        reset_url=reset_url,
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(
+    request: ResetPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    auth_service.reset_password(token=request.token, password=request.password)
+    return MessageResponse(status="ok", detail="Password updated. You can sign in with the new password.")
 
 
 @router.get("/me", response_model=UserResponse)

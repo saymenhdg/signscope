@@ -1,129 +1,234 @@
-import { CloudUpload, Download, FileVideo, FolderPlus, Sparkles } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { CloudUpload, Download, Loader2, Play, Square, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AppShell } from '../components/app-shell'
 import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
+import { Skeleton } from '../components/ui/skeleton'
+import { useToast } from '../components/ui/toast'
 import { apiRequest } from '../lib/api'
-import type { HealthResponse } from '../lib/types'
+import type { PredictResponse } from '../lib/types'
 
-const SAMPLE_SEGMENTS = [
-  { timecode: '0:04', text: 'Hello, my name is Alex and I am excited to share this project with you today.' },
-  { timecode: '0:12', text: 'The main goal of SignSpeak is to bridge the gap between deaf and hearing communities.' },
-  { timecode: '0:24', text: 'We use landmark tracking and PyTorch inference to keep translation fast and local.' },
-]
+type TranscriptSegment = {
+  timecode: string
+  letter: string
+  confidence: number
+}
 
 export function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [segments, setSegments] = useState<TranscriptSegment[]>([])
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const abortRef = useRef(false)
+  const { toast } = useToast()
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadHealth() {
-      try {
-        const payload = await apiRequest<HealthResponse>('/api/health')
-        if (!cancelled) {
-          setHealth(payload)
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load engine status.')
-        }
-      }
-    }
-
-    void loadHealth()
-
     return () => {
-      cancelled = true
+      if (videoUrl) URL.revokeObjectURL(videoUrl)
     }
-  }, [])
+  }, [videoUrl])
 
-  const transcriptSegments = useMemo(() => {
-    if (!selectedFile) {
-      return SAMPLE_SEGMENTS
+  function handleFileSelect(file: File | null) {
+    if (!file) return
+    abortRef.current = true
+    setAnalyzing(false)
+    setProgress(0)
+    setSegments([])
+    if (videoUrl) URL.revokeObjectURL(videoUrl)
+    const url = URL.createObjectURL(file)
+    setSelectedFile(file)
+    setVideoUrl(url)
+  }
+
+  const analyzeVideo = useCallback(async () => {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas || !selectedFile) return
+
+    abortRef.current = false
+    setAnalyzing(true)
+    setSegments([])
+    setProgress(0)
+
+    await new Promise<void>((resolve) => {
+      video.currentTime = 0
+      video.onseeked = () => resolve()
+    })
+
+    const duration = video.duration
+    const sampleInterval = 0.5
+    const totalFrames = Math.floor(duration / sampleInterval)
+    const ctx = canvas.getContext('2d')!
+    const newSegments: TranscriptSegment[] = []
+
+    for (let i = 0; i < totalFrames && !abortRef.current; i++) {
+      const time = i * sampleInterval
+      await new Promise<void>((resolve) => {
+        video.currentTime = time
+        video.onseeked = () => resolve()
+      })
+
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      ctx.drawImage(video, 0, 0)
+      const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+
+      try {
+        const result = await apiRequest<PredictResponse>('/api/alphabet/predict', {
+          method: 'POST',
+          body: JSON.stringify({ image_base64: base64 }),
+        })
+
+        if (result.tracking_detected && result.is_confident) {
+          const minutes = Math.floor(time / 60)
+          const seconds = Math.floor(time % 60)
+          newSegments.push({
+            timecode: `${minutes}:${seconds.toString().padStart(2, '0')}`,
+            letter: result.predicted_letter,
+            confidence: result.confidence * 100,
+          })
+          setSegments([...newSegments])
+        }
+      } catch {
+        // Frame failed, continue to next.
+      }
+
+      setProgress(Math.round(((i + 1) / totalFrames) * 100))
     }
-    return SAMPLE_SEGMENTS.map((segment, index) => ({
-      ...segment,
-      text: `${segment.text} Source file: ${selectedFile.name} (${index + 1}/${SAMPLE_SEGMENTS.length}).`,
-    }))
-  }, [selectedFile])
+
+    setAnalyzing(false)
+    if (!abortRef.current) {
+      toast({
+        title: 'Analysis complete',
+        description: `Detected ${newSegments.length} signs across ${totalFrames} frames.`,
+        variant: 'success',
+      })
+    }
+  }, [selectedFile, toast])
+
+  function stopAnalysis() {
+    abortRef.current = true
+    setAnalyzing(false)
+  }
+
+  function downloadTranscript() {
+    if (segments.length === 0) return
+    const text = segments.map((s) => `[${s.timecode}] ${s.letter} (${s.confidence.toFixed(1)}%)`).join('\n')
+    const blob = new Blob([text], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `transcript-${selectedFile?.name ?? 'video'}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const assembledWord = segments.map((s) => s.letter).join('')
 
   return (
     <AppShell
       title="Upload Video Translation"
-      subtitle="Use the stitched upload layout as the review surface for queued videos while the backend reports engine readiness."
+      subtitle="Upload a sign language video to analyze frame-by-frame with the alphabet recognizer."
     >
-      {error && (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
-      )}
-
       <div className="grid gap-8 xl:grid-cols-[1fr_380px]">
         <div className="space-y-8">
           <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-0">
-            <label className="group block cursor-pointer rounded-[30px] p-12 text-center">
-              <input
-                type="file"
-                accept=".mp4,.mov,.webm"
-                className="hidden"
-                onChange={(event) => {
-                  setSelectedFile(event.target.files?.[0] ?? null)
-                }}
-              />
-              <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-surface-container text-secondary shadow-lg">
-                <CloudUpload className="size-8" />
+            {videoUrl ? (
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  className="w-full rounded-[30px]"
+                  controls={!analyzing}
+                  muted
+                  playsInline
+                />
+                {analyzing && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-[30px] bg-background/60 backdrop-blur-sm">
+                    <div className="text-center">
+                      <Loader2 className="mx-auto size-10 animate-spin text-secondary" />
+                      <p className="mt-3 font-headline text-lg font-bold text-on-surface">Analyzing frames...</p>
+                      <p className="mt-1 text-sm text-on-surface-variant">{progress}% complete</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="mt-6 font-headline text-2xl font-bold text-on-surface">Drag and drop a video to translate</p>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-on-surface-variant">
-                MP4, MOV, or WEBM. This page is wired to FastAPI for engine status and is ready for a future file-upload pipeline.
-              </p>
-              <div className="mt-8 inline-flex rounded-2xl border border-secondary/10 bg-gradient-to-br from-primary to-primary-container px-6 py-3 font-semibold text-[#0b1326]">
-                Browse Files
-              </div>
-            </label>
+            ) : (
+              <label className="group block cursor-pointer rounded-[30px] p-12 text-center transition-colors hover:bg-surface-container/50">
+                <input
+                  type="file"
+                  accept=".mp4,.mov,.webm"
+                  className="hidden"
+                  onChange={(event) => handleFileSelect(event.target.files?.[0] ?? null)}
+                />
+                <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-surface-container text-secondary shadow-lg transition-transform duration-300 group-hover:scale-110">
+                  <CloudUpload className="size-8" />
+                </div>
+                <p className="mt-6 font-headline text-2xl font-bold text-on-surface">Drag and drop a video to translate</p>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-on-surface-variant">
+                  MP4, MOV, or WEBM. Each frame is analyzed through the alphabet landmark model.
+                </p>
+                <div className="mt-8 inline-flex rounded-2xl border border-secondary/10 bg-gradient-to-br from-primary to-primary-container px-6 py-3 font-semibold text-[#0b1326]">
+                  Browse Files
+                </div>
+              </label>
+            )}
           </Card>
 
           <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <CardTitle>Analysis Status</CardTitle>
-                <CardDescription>Current backend model readiness and queue preview.</CardDescription>
+                <CardTitle>Analysis Controls</CardTitle>
+                <CardDescription>Select a video, then run the frame-by-frame recognizer.</CardDescription>
               </div>
-              <Badge className="border-secondary/10 bg-secondary/10 text-secondary">
-                {health?.alphabet_model_ready ? 'Engine Ready' : 'Loading'}
+              <Badge className={analyzing ? 'border-tertiary/10 bg-tertiary/10 text-tertiary' : 'border-secondary/10 bg-secondary/10 text-secondary'}>
+                {analyzing ? 'Analyzing' : selectedFile ? 'Ready' : 'No File'}
               </Badge>
             </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <UploadStat label="Selected file" value={selectedFile?.name ?? 'No file'} />
-              <UploadStat label="Formats" value="MP4 MOV WEBM" />
-              <UploadStat label="Recognizer" value={health?.landmark_model_ready ? 'Landmark ensemble' : 'Booting'} />
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <UploadStat label="Selected file" value={selectedFile?.name ?? 'None'} />
+              <UploadStat label="Detected signs" value={String(segments.length)} />
+              <UploadStat label="Progress" value={`${progress}%`} />
             </div>
-            <div className="mt-8">
-              <div className="mb-3 flex items-center justify-between text-sm text-on-surface-variant">
-                <span>Mock analysis progress</span>
-                <span>64%</span>
-              </div>
+            <div className="mt-6">
               <div className="h-3 overflow-hidden rounded-full bg-surface-container-highest">
-                <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-secondary to-primary shadow-[0_0_12px_rgba(68,226,205,0.35)]" />
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-secondary to-primary shadow-[0_0_12px_rgba(68,226,205,0.35)] transition-[width] duration-300"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
             </div>
-          </Card>
-
-          <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <FileVideo className="size-5 text-secondary" />
-              <div>
-                <CardTitle>Preview Surface</CardTitle>
-                <CardDescription>The selected file name is echoed here while transcript segments update on the right.</CardDescription>
-              </div>
-            </div>
-            <div className="flex aspect-video items-center justify-center rounded-[28px] border border-outline-variant/10 bg-[linear-gradient(180deg,#192235_0%,#0b1326_100%)] text-center">
-              <div className="space-y-3 px-6">
-                <p className="font-headline text-3xl font-bold text-on-surface">{selectedFile?.name ?? 'No video selected yet'}</p>
-                <p className="text-sm text-on-surface-variant">Attach a clip to prepare it for future upload-backed translation jobs.</p>
-              </div>
+            <div className="mt-6 flex gap-3">
+              {!analyzing ? (
+                <>
+                  <Button onClick={analyzeVideo} disabled={!selectedFile}>
+                    <Play className="size-4" />
+                    Analyze Video
+                  </Button>
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".mp4,.mov,.webm"
+                      className="hidden"
+                      onChange={(event) => handleFileSelect(event.target.files?.[0] ?? null)}
+                    />
+                    <span className="inline-flex items-center justify-center gap-2 rounded-2xl border border-outline-variant/25 bg-surface-container-high px-4 py-2 text-sm font-semibold text-on-surface transition-all hover:bg-surface-container-highest">
+                      <CloudUpload className="size-4" />
+                      {selectedFile ? 'Change File' : 'Select File'}
+                    </span>
+                  </label>
+                </>
+              ) : (
+                <Button variant="secondary" onClick={stopAnalysis}>
+                  <Square className="size-4" />
+                  Stop
+                </Button>
+              )}
             </div>
           </Card>
         </div>
@@ -132,39 +237,62 @@ export function UploadPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle>Live Transcript</CardTitle>
-              <CardDescription>Backend-linked review panel ready for upload job output.</CardDescription>
+              <CardDescription>Signs detected from video frames.</CardDescription>
             </div>
             <Sparkles className="size-5 text-secondary" />
           </div>
 
-          <div className="mt-8 space-y-5">
-            {transcriptSegments.map((segment) => (
-              <div key={segment.timecode} className="flex gap-4 rounded-[22px] bg-surface-container-high/45 p-4">
-                <span className="shrink-0 font-mono text-xs text-secondary">{segment.timecode}</span>
-                <p className="text-sm leading-7 text-on-surface">{segment.text}</p>
+          {assembledWord && (
+            <div className="mt-6 rounded-3xl border border-secondary/15 bg-secondary/10 p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Assembled</p>
+              <p className="mt-2 font-headline text-2xl font-bold tracking-widest text-on-surface">{assembledWord}</p>
+            </div>
+          )}
+
+          <div className="mt-6 max-h-[50vh] space-y-3 overflow-y-auto">
+            {segments.length > 0 ? (
+              segments.map((segment, i) => (
+                <div key={i} className="flex items-center gap-4 rounded-2xl bg-surface-container-high/45 p-4">
+                  <span className="shrink-0 font-mono text-xs text-secondary">{segment.timecode}</span>
+                  <span className="font-headline text-lg font-bold text-on-surface">{segment.letter}</span>
+                  <span className="ml-auto text-xs text-on-surface-variant">{segment.confidence.toFixed(1)}%</span>
+                </div>
+              ))
+            ) : analyzing ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl bg-surface-container-high/45 p-4">
+                  <Skeleton className="h-5 w-full" />
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl bg-surface-container-high/45 p-5 text-center text-sm text-on-surface-variant">
+                {selectedFile ? 'Click "Analyze Video" to start detection.' : 'Select a video to begin.'}
               </div>
-            ))}
+            )}
           </div>
 
-          <div className="mt-8 grid gap-3">
-            <button className="flex items-center justify-center gap-2 rounded-2xl bg-surface-container-highest px-4 py-3 font-semibold text-on-surface transition-colors hover:bg-surface-bright">
+          <div className="mt-6 grid gap-3">
+            <Button
+              variant="secondary"
+              className="w-full justify-center"
+              disabled={segments.length === 0}
+              onClick={downloadTranscript}
+            >
               <Download className="size-4 text-secondary" />
               Download Transcript
-            </button>
-            <button className="flex items-center justify-center gap-2 rounded-2xl bg-secondary/10 px-4 py-3 font-semibold text-secondary transition-colors hover:bg-secondary/20">
-              <FolderPlus className="size-4" />
-              Save to Library
-            </button>
+            </Button>
           </div>
         </Card>
       </div>
+
+      <canvas ref={canvasRef} className="hidden" />
     </AppShell>
   )
 }
 
 function UploadStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-outline-variant/10 bg-surface-container p-5">
+    <div className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
       <p className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">{label}</p>
       <p className="mt-3 break-all font-semibold text-on-surface">{value}</p>
     </div>

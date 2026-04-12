@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from api.app.models import OAuthAccount, User, UserSession
+from api.app.models import OAuthAccount, PasswordResetToken, User, UserSession
 
 
 UNSET = object()
@@ -154,3 +154,65 @@ class AuthRepository:
         for session in expired:
             self.db.delete(session)
         self.db.commit()
+
+    def delete_sessions_for_user(self, user: User) -> None:
+        sessions = self.db.scalars(select(UserSession).where(UserSession.user_id == user.id)).all()
+        if not sessions:
+            return
+        for session in sessions:
+            self.db.delete(session)
+        self.db.commit()
+
+    def create_password_reset_token(self, *, user: User, token_hash: str, expires_at: datetime) -> PasswordResetToken:
+        token = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        self.db.add(token)
+        self.db.commit()
+        self.db.refresh(token)
+        return token
+
+    def get_password_reset_token(self, token_hash: str) -> PasswordResetToken | None:
+        statement = (
+            select(PasswordResetToken)
+            .options(joinedload(PasswordResetToken.user))
+            .where(PasswordResetToken.token_hash == token_hash)
+        )
+        return self.db.scalar(statement)
+
+    def mark_password_reset_token_used(self, token: PasswordResetToken, used_at: datetime) -> PasswordResetToken:
+        token.used_at = used_at
+        self.db.add(token)
+        self.db.commit()
+        self.db.refresh(token)
+        return token
+
+    def delete_expired_password_reset_tokens(self, now: datetime) -> None:
+        expired = self.db.scalars(
+            select(PasswordResetToken).where(
+                (PasswordResetToken.expires_at < now) | (PasswordResetToken.used_at.is_not(None))
+            )
+        ).all()
+        if not expired:
+            return
+        for token in expired:
+            self.db.delete(token)
+        self.db.commit()
+
+    def delete_password_reset_tokens_for_user(self, user: User) -> None:
+        tokens = self.db.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)).all()
+        if not tokens:
+            return
+        for token in tokens:
+            self.db.delete(token)
+        self.db.commit()
+
+    def update_user_password(self, user: User, *, password_hash: str, password_salt: str) -> User:
+        user.password_hash = password_hash
+        user.password_salt = password_salt
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user

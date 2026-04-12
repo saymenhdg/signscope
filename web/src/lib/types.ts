@@ -23,6 +23,12 @@ export type AuthProvidersResponse = {
   providers: AuthProviderOption[]
 }
 
+export type ForgotPasswordResponse = {
+  status: string
+  detail: string
+  reset_url: string | null
+}
+
 export type HealthResponse = {
   status: string
   alphabet_model_ready: boolean

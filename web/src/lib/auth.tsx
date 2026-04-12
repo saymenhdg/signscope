@@ -8,7 +8,7 @@ import {
 } from 'react'
 
 import { API_BASE, apiRequest } from './api'
-import type { AuthProvidersResponse, AuthResponse, AuthProviderOption, User } from './types'
+import type { AuthProvidersResponse, AuthResponse, AuthProviderOption, ForgotPasswordResponse, User } from './types'
 
 type Credentials = {
   email: string
@@ -26,6 +26,8 @@ type AuthContextValue = {
   signIn: (payload: Credentials) => Promise<User>
   signUp: (payload: RegisterPayload) => Promise<User>
   signOut: () => Promise<void>
+  requestPasswordReset: (email: string) => Promise<ForgotPasswordResponse>
+  resetPassword: (token: string, password: string) => Promise<void>
   restoreSession: () => Promise<User | null>
   signInWithProvider: (providerId: string, nextPath?: string) => void
 }
@@ -113,6 +115,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setUser(null)
   }
 
+  async function requestPasswordReset(email: string) {
+    return apiRequest<ForgotPasswordResponse>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  async function resetPassword(token: string, password: string) {
+    await apiRequest('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    })
+  }
+
   function signInWithProvider(providerId: string, nextPath = '/app/dashboard') {
     const encodedNext = encodeURIComponent(nextPath)
     window.location.assign(`${API_BASE}/api/auth/oauth/${providerId}/start?next=${encodedNext}`)
@@ -126,6 +142,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       signIn,
       signUp,
       signOut,
+      requestPasswordReset,
+      resetPassword,
       restoreSession,
       signInWithProvider,
     }),
@@ -142,4 +160,3 @@ export function useAuth() {
   }
   return context
 }
-

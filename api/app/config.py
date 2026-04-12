@@ -39,11 +39,10 @@ class Settings(BaseSettings):
     alphabet_image_checkpoint: str = "artifacts/alphabet_frames_v1/best.pt"
     alphabet_landmark_checkpoints: list[str] = Field(
         default_factory=lambda: [
-            "artifacts/alphabet_landmarks_v2/best.pt",
-            "artifacts/alphabet_landmarks_v3/best.pt",
+            "artifacts/alphabet_landmarks_v8/best.pt",
         ]
     )
-    alphabet_guide_records_path: str = "data/alphabet_landmarks_v2/records.json"
+    alphabet_guide_records_path: str = "data/alphabet_landmarks_v6/records.json"
     alphabet_threshold: float = 0.45
     alphabet_min_margin: float = 0.10
 

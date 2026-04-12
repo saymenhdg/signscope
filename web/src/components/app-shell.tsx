@@ -5,15 +5,20 @@ import {
   CloudUpload,
   Home,
   LogOut,
+  Moon,
   Sparkles,
+  Sun,
   UserCircle2,
 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import { LEARN_SUBNAV_ITEMS } from './learning/learn-subnav'
+import { PageTransition } from './ui/page-transition'
 import { Button, buttonVariants } from './ui/button'
+import { Tooltip } from './ui/tooltip'
 import { useAuth } from '../lib/auth'
+import { useTheme } from '../lib/theme'
 import { cn } from '../lib/utils'
 
 type AppShellProps = PropsWithChildren<{
@@ -31,12 +36,13 @@ const NAV_ITEMS = [
 
 export function AppShell({ children, title, subtitle }: AppShellProps) {
   const { user, signOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const location = useLocation()
   const isLearnSection = location.pathname === '/app/learn' || location.pathname.startsWith('/app/learn/')
 
   return (
     <div className="min-h-screen bg-background text-on-background">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-outline-variant/35 bg-[#131b2e]/92 px-6 py-8 shadow-[40px_0_60px_-15px_rgba(45,52,73,0.1)] backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col border-r border-outline-variant/35 bg-surface-container-low/92 px-6 py-8 shadow-[40px_0_60px_-15px_rgba(45,52,73,0.1)] backdrop-blur-xl lg:flex">
         <div className="mb-10 flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-container text-[#0b1326] shadow-lg shadow-primary/10">
             <Sparkles className="size-5" />
@@ -131,26 +137,46 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
           })}
         </nav>
 
-        <Button
-          variant="secondary"
-          className="mt-8 justify-start rounded-2xl px-4 py-3"
-          onClick={() => {
-            void signOut()
-          }}
-        >
-          <LogOut className="size-4" />
-          Sign Out
-        </Button>
+        <div className="mt-6 flex items-center gap-2">
+          <Tooltip content={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <button
+              onClick={toggleTheme}
+              className="flex size-10 items-center justify-center rounded-2xl border border-outline-variant/25 bg-surface-container-high text-on-surface-variant transition-all hover:bg-surface-container-highest hover:text-on-surface"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
+          </Tooltip>
+          <Button
+            variant="secondary"
+            className="flex-1 justify-start rounded-2xl px-4 py-3"
+            onClick={() => {
+              void signOut()
+            }}
+          >
+            <LogOut className="size-4" />
+            Sign Out
+          </Button>
+        </div>
       </aside>
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-[#0b1326]/88 px-5 py-4 backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-6">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="font-headline text-2xl font-black tracking-tight text-primary sm:text-3xl">{title}</p>
               <p className="mt-1 max-w-2xl text-sm text-on-surface-variant sm:text-base">{subtitle}</p>
             </div>
             <div className="flex items-center gap-3">
+              <Tooltip content={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+                <button
+                  onClick={toggleTheme}
+                  className="flex size-9 items-center justify-center rounded-full border border-outline-variant/25 bg-surface-container text-on-surface-variant transition-colors hover:text-on-surface lg:hidden"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                </button>
+              </Tooltip>
               <NavLink
                 to="/app/profile"
                 className={({ isActive }) =>
@@ -180,10 +206,12 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-outline-variant/30 bg-[#0b1326]/92 px-2 py-3 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-outline-variant/30 bg-background/92 px-2 py-3 backdrop-blur-xl lg:hidden">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           return (
