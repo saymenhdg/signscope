@@ -34,8 +34,34 @@ export type HealthResponse = {
   alphabet_model_ready: boolean
   image_model_ready: boolean
   landmark_model_ready: boolean
+  word_model_ready: boolean
+  word_labels: string[]
   labels: string[]
   oauth_providers: string[]
+}
+
+export type WordVocabularyResponse = {
+  labels: string[]
+  sequence_length: number
+  feature_dim: number
+  ready: boolean
+}
+
+export type WordPrediction = {
+  label: string
+  score: number
+}
+
+export type WordPredictResponse = {
+  predicted_word: string
+  confidence: number
+  is_confident: boolean
+  matches_target: boolean | null
+  tracking_detected: boolean
+  valid_frame_ratio: number
+  feedback: string
+  target_word: string | null
+  top_predictions: WordPrediction[]
 }
 
 export type DashboardOverview = {

@@ -87,6 +87,8 @@ class HealthResponse(BaseModel):
     alphabet_model_ready: bool
     image_model_ready: bool
     landmark_model_ready: bool
+    word_model_ready: bool = False
+    word_labels: list[str] = Field(default_factory=list)
     labels: list[str]
     oauth_providers: list[str]
 
@@ -178,6 +180,51 @@ class WordLessonResponse(BaseModel):
     items: list[WordLessonItem]
     phrase_drills: list[PhraseDrill]
     note: str
+
+
+class WordPredictRequest(BaseModel):
+    frames: list[list[float]] = Field(
+        ...,
+        description="Sequence of per-frame landmark feature vectors, each 167-dim.",
+        min_length=1,
+    )
+    top_k: int | None = Field(default=None, ge=1, le=25)
+    target_word: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class WordPredictFramesRequest(BaseModel):
+    images_base64: list[str] = Field(
+        ...,
+        description="Ordered sequence of base64-encoded JPEG/PNG frames captured from the camera.",
+        min_length=4,
+        max_length=96,
+    )
+    top_k: int | None = Field(default=None, ge=1, le=25)
+    target_word: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class WordPrediction(BaseModel):
+    label: str
+    score: float
+
+
+class WordPredictResponse(BaseModel):
+    predicted_word: str
+    confidence: float
+    is_confident: bool = False
+    matches_target: bool | None = None
+    tracking_detected: bool = True
+    valid_frame_ratio: float = 1.0
+    feedback: str = ""
+    target_word: str | None = None
+    top_predictions: list[WordPrediction]
+
+
+class WordVocabularyResponse(BaseModel):
+    labels: list[str]
+    sequence_length: int
+    feature_dim: int
+    ready: bool
 
 
 class LearningSessionRequest(BaseModel):
