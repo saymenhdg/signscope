@@ -433,7 +433,7 @@ export function WordLessonPage() {
       <LearnSubnav className="mb-6" />
 
       {loadError && (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+        <div role="alert" className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
           {loadError}
         </div>
       )}
@@ -784,7 +784,7 @@ function PracticeMode(props: PracticeModeProps) {
           <div className="relative aspect-video overflow-hidden bg-[linear-gradient(180deg,#192235_0%,#0b1326_100%)]">
             <video
               ref={videoRef}
-              className="h-full w-full object-cover opacity-90"
+              className="h-full w-full scale-x-[-1] object-cover opacity-90"
               playsInline
               muted
               autoPlay
@@ -876,7 +876,7 @@ function PracticeMode(props: PracticeModeProps) {
         <canvas ref={canvasRef} className="hidden" />
 
         {(cameraError || requestError) && (
-          <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+          <div role="alert" className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
             {cameraError ?? requestError}
           </div>
         )}

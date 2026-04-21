@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge'
 import { buttonVariants } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { Progress } from '../components/ui/progress'
+import { Skeleton } from '../components/ui/skeleton'
 import { apiRequest } from '../lib/api'
 import type { AlphabetLessonResponse, ProgressOverview, WordLessonResponse } from '../lib/types'
 import { cn } from '../lib/utils'
@@ -17,6 +18,7 @@ export function LearningHubPage() {
   const [alphabet, setAlphabet] = useState<AlphabetLessonResponse | null>(null)
   const [words, setWords] = useState<WordLessonResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +38,10 @@ export function LearningHubPage() {
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Failed to load the learning hub.')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
         }
       }
     }
@@ -60,9 +66,23 @@ export function LearningHubPage() {
       <LearnSubnav className="mb-6" />
 
       {error && (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
+        <div role="alert" className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
       )}
 
+      {isLoading ? (
+        <div className="space-y-8">
+          <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr]">
+            <Skeleton className="h-[26rem] rounded-[34px]" />
+            <Skeleton className="h-[26rem] rounded-[34px]" />
+          </div>
+          <div className="grid gap-8 xl:grid-cols-3">
+            <Skeleton className="h-[22rem] rounded-[34px]" />
+            <Skeleton className="h-[22rem] rounded-[34px]" />
+            <Skeleton className="h-[22rem] rounded-[34px]" />
+          </div>
+        </div>
+      ) : (
+      <>
       <section className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr]">
         <Card className="overflow-hidden rounded-[34px] border-outline-variant/12 bg-[linear-gradient(135deg,rgba(189,194,255,0.16),rgba(11,19,38,0.92)_52%),linear-gradient(180deg,#131b2e_0%,#091122_100%)] p-8">
           <Badge className="border-secondary/10 bg-secondary/10 text-secondary">Structured learning</Badge>
@@ -191,6 +211,8 @@ export function LearningHubPage() {
           </div>
         </Card>
       </section>
+      </>
+      )}
     </AppShell>
   )
 }
@@ -250,7 +272,7 @@ function TrackCard({
   return (
     <Card className="rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-8">
       <div className="flex items-start justify-between gap-5">
-        <div className={cn('flex size-14 items-center justify-center rounded-[22px] bg-gradient-to-br text-[#0b1326]', accent)}>
+        <div className={cn('flex size-14 items-center justify-center rounded-[22px] bg-gradient-to-br text-background', accent)}>
           <Icon className="size-6" />
         </div>
         <Badge className="border-secondary/10 bg-secondary/10 text-secondary">{detail}</Badge>

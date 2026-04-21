@@ -157,6 +157,7 @@ export function TeachersPage() {
       <div className="space-y-10">
         {(error || formError || message) ? (
           <div
+            role="alert"
             className={
               error || formError
                 ? 'rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error'
@@ -215,6 +216,9 @@ export function TeachersPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm sm:p-6"
           onClick={closeScheduler}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Schedule with ${selectedTeacher.display_name}`}
         >
           <div
             className="scrollbar-none max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[32px] border border-outline-variant/15 bg-surface-container-low/95 p-6 shadow-[0_40px_110px_rgba(4,8,20,0.6)] sm:p-8"
@@ -234,7 +238,8 @@ export function TeachersPage() {
               <button
                 type="button"
                 onClick={closeScheduler}
-                className="flex size-11 items-center justify-center rounded-full border border-outline-variant/15 bg-background/40 text-on-surface-variant transition-colors hover:text-on-surface"
+                aria-label="Close scheduler"
+                className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-outline-variant/15 bg-background/40 text-on-surface-variant transition-colors hover:text-on-surface"
               >
                 <X className="size-5" />
               </button>

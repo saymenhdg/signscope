@@ -2,6 +2,7 @@ import { LoaderCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
+import { ScrollToTop } from './components/scroll-to-top'
 import { useAuth } from './lib/auth'
 import { DashboardPage } from './pages/DashboardPage'
 import { AuthPage } from './pages/AuthPage'
@@ -10,6 +11,7 @@ import { LandingPage } from './pages/LandingPage'
 import { LearningHubPage } from './pages/LearningHubPage'
 import { LearningTestPage } from './pages/LearningTestPage'
 import { LivePage } from './pages/LivePage'
+import { NotFoundPage } from './pages/NotFoundPage'
 import { ProgressPage } from './pages/ProgressPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { TeacherDashboardPage } from './pages/TeacherDashboardPage'
@@ -69,10 +71,10 @@ function TeacherOnlyRoute() {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-on-background">
+    <div className="flex min-h-screen items-center justify-center bg-background text-on-background" role="status">
       <div className="flex items-center gap-3 rounded-full border border-outline-variant/20 bg-surface-container px-5 py-3">
-        <LoaderCircle className="size-4 animate-spin text-secondary" />
-        <span className="text-sm text-on-surface-variant">Loading workspace...</span>
+        <LoaderCircle className="size-4 animate-spin text-secondary" aria-hidden="true" />
+        <span className="text-sm text-on-surface-variant">Loading workspace…</span>
       </div>
     </div>
   )
@@ -80,6 +82,8 @@ function LoadingScreen() {
 
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route
@@ -156,8 +160,9 @@ export default function App() {
         <Route path="settings" element={<TeacherSettingsPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </>
   )
 }
 

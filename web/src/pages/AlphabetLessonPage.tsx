@@ -392,7 +392,7 @@ export function AlphabetLessonPage() {
     <AppShell title="Alphabet Coach" subtitle="Study the alphabet first, then switch to practice and let the guided camera flow confirm each letter live.">
       <LearnSubnav className="mb-6" />
       {requestError && mode === 'study' ? (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{requestError}</div>
+        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">{requestError}</div>
       ) : null}
       <ModeToggle mode={mode} onChange={setMode} />
       <AnimatePresence mode="wait">
@@ -758,7 +758,7 @@ function PracticeMode({
           </div>
         </Card>
         <canvas ref={canvasRef} className="hidden" />
-        {(cameraError ?? requestError) ? <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">{cameraError ?? requestError}</div> : null}
+        {(cameraError ?? requestError) ? <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">{cameraError ?? requestError}</div> : null}
 
         <div className="grid gap-4 sm:grid-cols-4">
           <LessonStat label="Target" value={currentItem?.label ?? '...'} />

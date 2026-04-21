@@ -34,7 +34,7 @@ export function ProgressPage() {
       subtitle="Track activity heatmaps, weekly accuracy, weak areas, and achievement progress from your recorded learning sessions."
     >
       {error && (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error instanceof Error ? error.message : 'Failed to load progress.'}
         </div>
       )}
@@ -237,12 +237,16 @@ export function ProgressPage() {
           <CardDescription className="mt-1">These categories are currently pulling your average down.</CardDescription>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {overview ? (
-              weakAreas.map((item) => (
-                <div key={item.name} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high">
-                  <p className="font-semibold text-on-surface">{item.name}</p>
-                  <p className="mt-2 text-sm text-on-surface-variant">Accuracy: {item.accuracy}%</p>
-                </div>
-              ))
+              weakAreas.length > 0 ? (
+                weakAreas.map((item) => (
+                  <div key={item.name} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high">
+                    <p className="font-semibold text-on-surface">{item.name}</p>
+                    <p className="mt-2 text-sm text-on-surface-variant">Accuracy: {item.accuracy}%</p>
+                  </div>
+                ))
+              ) : (
+                <EmptyState copy="No weak areas detected yet. Keep practicing and areas that need improvement will surface here." />
+              )
             ) : (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
@@ -259,7 +263,7 @@ export function ProgressPage() {
           <CardDescription className="mt-1">Milestones unlocked by your current account activity.</CardDescription>
           <div className="mt-8 space-y-4">
             {overview ? (
-              achievements.map((achievement) => (
+              achievements.length > 0 ? achievements.map((achievement) => (
                 <div
                   key={achievement.name}
                   className={cn(
@@ -272,7 +276,9 @@ export function ProgressPage() {
                   <p className="font-semibold text-on-surface">{achievement.name}</p>
                   <p className="mt-2 text-sm leading-7 text-on-surface-variant">{achievement.description}</p>
                 </div>
-              ))
+              )) : (
+                <EmptyState copy="No achievements yet. Complete lessons and practice sessions to unlock milestones." />
+              )
             ) : (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">

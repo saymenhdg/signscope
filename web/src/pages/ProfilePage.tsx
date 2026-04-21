@@ -1,9 +1,10 @@
-import { CalendarDays, Camera, Mail, Save, UserCircle2 } from 'lucide-react'
+import { CalendarDays, Camera, LoaderCircle, Mail, Save, UserCircle2 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { AppShell } from '../components/app-shell'
 import { Button } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
+import { useToast } from '../components/ui/toast'
 import { apiRequest } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { User } from '../lib/types'
@@ -16,12 +17,12 @@ const textAreaClassName =
 
 export function ProfilePage() {
   const { user, restoreSession } = useAuth()
+  const { toast } = useToast()
   const [displayName, setDisplayName] = useState('')
   const [age, setAge] = useState('')
   const [bio, setBio] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState<File | null>(null)
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -58,7 +59,6 @@ export function ProfilePage() {
   async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
-    setSaveMessage(null)
     setIsSavingProfile(true)
 
     try {
@@ -76,7 +76,7 @@ export function ProfilePage() {
         }),
       })
       await restoreSession()
-      setSaveMessage('Profile updated.')
+      toast({ title: 'Profile updated', variant: 'success' })
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to update profile.')
     } finally {
@@ -91,7 +91,6 @@ export function ProfilePage() {
     }
 
     setError(null)
-    setSaveMessage(null)
     setIsUploadingAvatar(true)
     try {
       const formData = new FormData()
@@ -102,7 +101,7 @@ export function ProfilePage() {
       })
       await restoreSession()
       setSelectedAvatar(null)
-      setSaveMessage('Avatar updated.')
+      toast({ title: 'Avatar updated', variant: 'success' })
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload avatar.')
     } finally {
@@ -115,15 +114,9 @@ export function ProfilePage() {
       title="Profile"
       subtitle="Edit your account details, set your age, and upload a profile image for the workspace."
     >
-      {(error ?? saveMessage) ? (
-        <div
-          className={
-            error
-              ? 'mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error'
-              : 'mb-6 rounded-2xl border border-secondary/20 bg-secondary/10 px-4 py-3 text-sm text-secondary'
-          }
-        >
-          {error ?? saveMessage}
+      {error ? (
+        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+          {error}
         </div>
       ) : null}
 
@@ -172,8 +165,8 @@ export function ProfilePage() {
             </label>
 
             <Button className="mt-4 w-full" onClick={handleAvatarUpload} disabled={!selectedAvatar || isUploadingAvatar}>
-              <Camera className="size-4" />
-              {isUploadingAvatar ? 'Uploading...' : 'Upload Avatar'}
+              {isUploadingAvatar ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Camera className="size-4" />}
+              {isUploadingAvatar ? 'Uploading…' : 'Upload Avatar'}
             </Button>
           </div>
         </Card>
@@ -244,8 +237,8 @@ export function ProfilePage() {
             </div>
 
             <Button type="submit" className="w-full sm:w-auto" disabled={isSavingProfile}>
-              <Save className="size-4" />
-              {isSavingProfile ? 'Saving...' : 'Save Changes'}
+              {isSavingProfile ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" />}
+              {isSavingProfile ? 'Saving…' : 'Save Changes'}
             </Button>
           </form>
         </Card>

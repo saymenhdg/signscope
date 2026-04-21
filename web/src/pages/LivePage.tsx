@@ -448,7 +448,7 @@ export function LivePage({
 
           <Card className="overflow-hidden rounded-[32px] border-outline-variant/12 bg-surface-container-lowest/90 p-0">
             <div className="relative aspect-video overflow-hidden bg-[linear-gradient(180deg,#192235_0%,#0b1326_100%)]">
-              <video ref={videoRef} className="h-full w-full object-cover opacity-85" playsInline muted autoPlay />
+              <video ref={videoRef} className="h-full w-full scale-x-[-1] object-cover opacity-85" playsInline muted autoPlay />
               <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(68,226,205,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(68,226,205,0.08)_1px,transparent_1px)] [background-size:40px_40px]" />
               <div className="absolute left-6 top-6 rounded-2xl border border-outline-variant/10 bg-[#31394d]/60 px-4 py-2 backdrop-blur-xl">
                 <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export function LivePage({
           <canvas ref={canvasRef} className="hidden" />
 
           {(cameraError ?? requestError) && (
-            <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+            <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
               {cameraError ?? requestError}
             </div>
           )}

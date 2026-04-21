@@ -47,7 +47,7 @@ export function DashboardPage() {
       subtitle="Route through live learning, recent graded sessions, and the practice data coming back from FastAPI."
     >
       {error && (
-        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+        <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error instanceof Error ? error.message : 'Failed to load dashboard.'}
         </div>
       )}
@@ -172,29 +172,35 @@ export function DashboardPage() {
             </div>
             <div className="mt-8 space-y-4">
               {overview ? (
-                overview.recent_translations.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-3 rounded-[24px] border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high sm:flex-row sm:items-center"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold text-on-surface">{item.transcript}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.24em] text-on-surface-variant">{item.source_type}</p>
+                overview.recent_translations.length > 0 ? (
+                  overview.recent_translations.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-3 rounded-[24px] border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high sm:flex-row sm:items-center"
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-on-surface">{item.transcript}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.24em] text-on-surface-variant">{item.source_type}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          className={
+                            item.status_label === 'High Accuracy'
+                              ? 'border-secondary/10 bg-secondary/10 text-secondary'
+                              : 'border-tertiary/10 bg-tertiary/10 text-tertiary'
+                          }
+                        >
+                          {item.status_label}
+                        </Badge>
+                        <span className="font-mono text-sm text-on-surface-variant">{item.confidence.toFixed(1)}%</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        className={
-                          item.status_label === 'High Accuracy'
-                            ? 'border-secondary/10 bg-secondary/10 text-secondary'
-                            : 'border-tertiary/10 bg-tertiary/10 text-tertiary'
-                        }
-                      >
-                        {item.status_label}
-                      </Badge>
-                      <span className="font-mono text-sm text-on-surface-variant">{item.confidence.toFixed(1)}%</span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[24px] border border-dashed border-outline-variant/20 bg-surface-container p-6 text-sm leading-7 text-on-surface-variant">
+                    No translations yet. Start a live session or complete a lesson to see results here.
                   </div>
-                ))
+                )
               ) : (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="rounded-[24px] border border-outline-variant/10 bg-surface-container p-5">

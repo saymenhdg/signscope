@@ -4,10 +4,13 @@ import {
   BookOpen,
   Camera,
   Globe2,
+  Menu,
   ShieldCheck,
   Sparkles,
   UploadCloud,
+  X,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '../components/ui/badge'
@@ -36,16 +39,17 @@ const FEATURE_CARDS = [
 
 export function LandingPage() {
   const { user } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-on-background">
       <div className="pointer-events-none absolute -left-28 top-0 size-96 rounded-full bg-primary/10 blur-[120px]" />
       <div className="pointer-events-none absolute bottom-0 right-0 size-[34rem] rounded-full bg-secondary/8 blur-[160px]" />
 
-      <header className="sticky top-0 z-40 border-b border-outline-variant/25 bg-[#0b1326]/88 px-5 py-4 backdrop-blur-xl sm:px-8">
+      <header className="sticky top-0 z-40 border-b border-outline-variant/25 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-container text-[#0b1326] shadow-lg shadow-primary/10">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-container text-background shadow-lg shadow-primary/10">
               <Sparkles className="size-5" />
             </div>
             <div>
@@ -73,7 +77,35 @@ export function LandingPage() {
               </>
             )}
           </nav>
+
+          <button
+            type="button"
+            className="flex size-10 items-center justify-center rounded-xl border border-outline-variant/25 bg-surface-container text-on-surface-variant md:hidden"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <nav className="mt-4 flex flex-col gap-2 border-t border-outline-variant/20 pt-4 md:hidden">
+            {user ? (
+              <Link to="/app/dashboard" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>
+                Open Workspace
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className={buttonVariants({ variant: 'secondary' })} onClick={() => setMobileMenuOpen(false)}>
+                  Sign In
+                </Link>
+                <Link to="/register" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>
+                  Register
+                </Link>
+              </>
+            )}
+          </nav>
+        )}
       </header>
 
       <main className="relative mx-auto grid max-w-7xl gap-16 px-5 pb-24 pt-12 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">

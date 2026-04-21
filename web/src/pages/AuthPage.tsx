@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Chrome, Github, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Chrome, Github, LoaderCircle, Sparkles } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -151,7 +151,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   return (
     <div className="min-h-screen bg-background text-on-background">
       <div className="grid min-h-screen lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="relative hidden overflow-hidden bg-[linear-gradient(180deg,#0b1326_0%,#131b2e_100%)] px-10 py-12 lg:block">
+        <section className="relative hidden overflow-hidden bg-[linear-gradient(180deg,var(--background)_0%,var(--surface-low)_100%)] px-10 py-12 lg:block">
           <div className="absolute -left-20 top-0 size-72 rounded-full bg-primary/12 blur-[110px]" />
           <div className="absolute bottom-0 right-0 size-80 rounded-full bg-secondary/10 blur-[130px]" />
           <div className="relative flex h-full flex-col justify-between">
@@ -282,7 +282,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
               ) : null}
 
               {message ? (
-                <div className="rounded-2xl border border-secondary/25 bg-secondary/10 px-4 py-3 text-sm text-secondary">
+                <div className="rounded-2xl border border-secondary/25 bg-secondary/10 px-4 py-3 text-sm text-secondary" role="status">
                   <p>{message}</p>
                   {resetUrl ? (
                     <a href={resetUrl} className="mt-2 inline-block font-semibold underline">
@@ -293,15 +293,18 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
               ) : null}
 
               {error ? (
-                <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
+                <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
                   {error}
                 </div>
               ) : null}
 
               <button type="submit" disabled={isSubmitting} className={cn(buttonVariants({ size: 'lg' }), 'w-full rounded-2xl')}>
+                {isSubmitting ? (
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                ) : null}
                 <span>
                   {isSubmitting
-                    ? 'Processing...'
+                    ? 'Processing…'
                     : isRegister
                       ? isTeacherAudience
                         ? 'Create Teacher Account'
@@ -314,7 +317,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
                             ? 'Sign In as Teacher'
                             : 'Sign In'}
                 </span>
-                <ArrowRight className="size-4" />
+                {!isSubmitting ? <ArrowRight className="size-4" /> : null}
               </button>
             </form>
 
