@@ -55,7 +55,7 @@ export function LearningHubPage() {
   return (
     <AppShell
       title="Learning Hub"
-      subtitle="Move between a live alphabet coach and a curated core-word library. The alphabet track confirms signs in real time and advances automatically when the model is satisfied."
+      subtitle="Move between a live alphabet coach and a reference-backed word library. The alphabet track confirms signs in real time and advances automatically when the model is satisfied."
     >
       <LearnSubnav className="mb-6" />
 
@@ -72,7 +72,7 @@ export function LearningHubPage() {
           <p className="mt-5 max-w-3xl text-base leading-8 text-on-surface-variant">
             The alphabet coach uses a transparent landmark guide over your live camera. Match the handshape,
             hold steady, and the system moves to the next character after the CNN confirms it. The word track
-            keeps a smaller, more reliable vocabulary set with reference clips and phrase drills.
+            now uses the linked word video library so Study and Practice work from the same reference set.
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -100,7 +100,7 @@ export function LearningHubPage() {
             <FocusRow
               icon={BookOpenCheck}
               title="Core Word Library"
-              detail={`${wordCount} reliable words with video references and phrase drills`}
+              detail={`${wordCount} words with linked video references and phrase drills`}
             />
             <FocusRow
               icon={Camera}
@@ -131,7 +131,7 @@ export function LearningHubPage() {
 
         <TrackCard
           title="Word Studio"
-          description="Study the seven most reliable words in the current PyTorch model through looping reference clips and phrase-building drills."
+          description="Study the linked word library through looping reference clips, then switch into camera practice against the same vocabulary."
           detail="Reference-driven"
           cta="Open word studio"
           href="/app/learn/words"
@@ -170,7 +170,7 @@ export function LearningHubPage() {
 
         <Card className="rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-8">
           <CardTitle>Phrase drills</CardTitle>
-          <CardDescription className="mt-2">Short phrases built from the current reliable word set.</CardDescription>
+          <CardDescription className="mt-2">Short phrases built from the current linked word set.</CardDescription>
 
           <div className="mt-8 grid gap-4">
             {(words?.phrase_drills ?? []).map((drill) => (

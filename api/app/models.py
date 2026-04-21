@@ -26,6 +26,7 @@ class User(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(80))
+    role: Mapped[str] = mapped_column(String(32), default="student", index=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -40,6 +41,28 @@ class User(TimestampMixin, Base):
     practice_sessions: Mapped[list["PracticeSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     learning_sessions: Mapped[list["LearningSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     learning_attempts: Mapped[list["LearningAttempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    teacher_profile: Mapped["TeacherProfile | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    lesson_bookings_as_teacher: Mapped[list["LessonBooking"]] = relationship(
+        back_populates="teacher",
+        cascade="all, delete-orphan",
+        foreign_keys="LessonBooking.teacher_id",
+    )
+    lesson_bookings_as_student: Mapped[list["LessonBooking"]] = relationship(
+        back_populates="student",
+        cascade="all, delete-orphan",
+        foreign_keys="LessonBooking.student_id",
+    )
+    message_threads_as_teacher: Mapped[list["MessageThread"]] = relationship(
+        back_populates="teacher",
+        cascade="all, delete-orphan",
+        foreign_keys="MessageThread.teacher_id",
+    )
+    message_threads_as_student: Mapped[list["MessageThread"]] = relationship(
+        back_populates="student",
+        cascade="all, delete-orphan",
+        foreign_keys="MessageThread.student_id",
+    )
+    sent_messages: Mapped[list["ThreadMessage"]] = relationship(back_populates="sender", cascade="all, delete-orphan")
 
 
 class OAuthAccount(TimestampMixin, Base):
@@ -91,6 +114,75 @@ class TranslationHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
     user: Mapped[User] = relationship(back_populates="translation_history")
+
+
+class TeacherProfile(TimestampMixin, Base):
+    __tablename__ = "teacher_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    headline: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    intro: Mapped[str | None] = mapped_column(Text, nullable=True)
+    specialties: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hourly_rate_usd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lesson_duration_minutes: Mapped[int] = mapped_column(Integer, default=45)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    user: Mapped[User] = relationship(back_populates="teacher_profile")
+
+
+class LessonBooking(TimestampMixin, Base):
+    __tablename__ = "lesson_bookings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=45)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+
+    teacher: Mapped[User] = relationship(
+        back_populates="lesson_bookings_as_teacher",
+        foreign_keys=[teacher_id],
+    )
+    student: Mapped[User] = relationship(
+        back_populates="lesson_bookings_as_student",
+        foreign_keys=[student_id],
+    )
+
+
+class MessageThread(TimestampMixin, Base):
+    __tablename__ = "message_threads"
+    __table_args__ = (UniqueConstraint("teacher_id", "student_id", name="uq_message_thread_teacher_student"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    last_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    teacher: Mapped[User] = relationship(
+        back_populates="message_threads_as_teacher",
+        foreign_keys=[teacher_id],
+    )
+    student: Mapped[User] = relationship(
+        back_populates="message_threads_as_student",
+        foreign_keys=[student_id],
+    )
+    messages: Mapped[list["ThreadMessage"]] = relationship(back_populates="thread", cascade="all, delete-orphan")
+
+
+class ThreadMessage(TimestampMixin, Base):
+    __tablename__ = "thread_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    thread_id: Mapped[int] = mapped_column(ForeignKey("message_threads.id", ondelete="CASCADE"), index=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+    thread: Mapped[MessageThread] = relationship(back_populates="messages")
+    sender: Mapped[User] = relationship(back_populates="sent_messages")
 
 
 class PracticeSession(Base):

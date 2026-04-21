@@ -2,10 +2,11 @@ import {
   BarChart3,
   BookOpenCheck,
   Camera,
-  CloudUpload,
+  GraduationCap,
   Home,
   LogOut,
   Moon,
+  Settings,
   Sparkles,
   Sun,
   UserCircle2,
@@ -22,22 +23,29 @@ import { useTheme } from '../lib/theme'
 import { cn } from '../lib/utils'
 
 type AppShellProps = PropsWithChildren<{
-  title: string
-  subtitle: string
+  title?: string
+  subtitle?: string
+  hideHeader?: boolean
 }>
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', icon: Home },
   { to: '/app/learn', label: 'Learn', icon: BookOpenCheck },
+  { to: '/app/teachers', label: 'Teachers', icon: GraduationCap },
   { to: '/app/live', label: 'Live', icon: Camera },
-  { to: '/app/upload', label: 'Upload', icon: CloudUpload },
   { to: '/app/progress', label: 'Progress', icon: BarChart3 },
 ]
 
-export function AppShell({ children, title, subtitle }: AppShellProps) {
+const TEACHER_NAV_ITEMS = [
+  { to: '/app/teacher', label: 'Teacher Dashboard', icon: GraduationCap },
+  { to: '/app/teacher/settings', label: 'Profile Setup', icon: Settings },
+]
+
+export function AppShell({ children, title, subtitle, hideHeader = false }: AppShellProps) {
   const { user, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
+  const navItems = user?.role === 'teacher' ? TEACHER_NAV_ITEMS : NAV_ITEMS
   const isLearnSection = location.pathname === '/app/learn' || location.pathname.startsWith('/app/learn/')
 
   return (
@@ -49,7 +57,9 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
           </div>
           <div>
             <p className="font-headline text-xl font-extrabold text-primary">SignSpeak AI</p>
-            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Workspace</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+              {user?.role === 'teacher' ? 'Teacher Workspace' : 'Workspace'}
+            </p>
           </div>
         </div>
 
@@ -85,14 +95,17 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
               <p className="truncate font-headline text-sm font-bold text-on-surface">{user?.display_name}</p>
               <p className="truncate text-xs text-secondary">{user?.email}</p>
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-              Edit
-            </span>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+                {user?.role ?? 'student'}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">Edit</p>
+            </div>
           </div>
         </NavLink>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon
             const showLearnChildren = item.label === 'Learn' && isLearnSection
             return (
@@ -161,50 +174,52 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
       </aside>
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-6">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="font-headline text-2xl font-black tracking-tight text-primary sm:text-3xl">{title}</p>
-              <p className="mt-1 max-w-2xl text-sm text-on-surface-variant sm:text-base">{subtitle}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Tooltip content={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
-                <button
-                  onClick={toggleTheme}
-                  className="flex size-9 items-center justify-center rounded-full border border-outline-variant/25 bg-surface-container text-on-surface-variant transition-colors hover:text-on-surface lg:hidden"
-                  aria-label="Toggle theme"
+        {!hideHeader ? (
+          <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-6">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+              <div className="min-w-0">
+                {title ? <p className="font-headline text-2xl font-black tracking-tight text-primary sm:text-3xl">{title}</p> : null}
+                {subtitle ? <p className="mt-1 max-w-2xl text-sm text-on-surface-variant sm:text-base">{subtitle}</p> : null}
+              </div>
+              <div className="flex items-center gap-3">
+                <Tooltip content={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
+                  <button
+                    onClick={toggleTheme}
+                    className="flex size-9 items-center justify-center rounded-full border border-outline-variant/25 bg-surface-container text-on-surface-variant transition-colors hover:text-on-surface lg:hidden"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                  </button>
+                </Tooltip>
+                <NavLink
+                  to="/app/profile"
+                  className={({ isActive }) =>
+                    cn(
+                      'hidden rounded-full border border-outline-variant/25 bg-surface-container px-4 py-2 text-sm text-on-surface-variant transition-colors md:flex md:items-center md:gap-2',
+                      isActive && 'border-secondary/15 text-secondary',
+                    )
+                  }
                 >
-                  {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-                </button>
-              </Tooltip>
-              <NavLink
-                to="/app/profile"
-                className={({ isActive }) =>
-                  cn(
-                    'hidden rounded-full border border-outline-variant/25 bg-surface-container px-4 py-2 text-sm text-on-surface-variant transition-colors md:flex md:items-center md:gap-2',
-                    isActive && 'border-secondary/15 text-secondary',
-                  )
-                }
-              >
-                <UserCircle2 className="size-4 text-secondary" />
-                <span>{user?.display_name}</span>
-              </NavLink>
-              <NavLink to="/app/profile" className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'lg:hidden')}>
-                <UserCircle2 className="size-4" />
-              </NavLink>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => {
-                  void signOut()
-                }}
-              >
-                <LogOut className="size-4" />
-              </Button>
+                  <UserCircle2 className="size-4 text-secondary" />
+                  <span>{user?.display_name}</span>
+                </NavLink>
+                <NavLink to="/app/profile" className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'lg:hidden')}>
+                  <UserCircle2 className="size-4" />
+                </NavLink>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => {
+                    void signOut()
+                  }}
+                >
+                  <LogOut className="size-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        ) : null}
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
           <PageTransition>{children}</PageTransition>
@@ -212,7 +227,7 @@ export function AppShell({ children, title, subtitle }: AppShellProps) {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-outline-variant/30 bg-background/92 px-2 py-3 backdrop-blur-xl lg:hidden">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon
           return (
             <NavLink

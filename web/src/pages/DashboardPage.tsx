@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, BookOpenCheck, Camera, CloudUpload, ImageIcon, Sparkles } from 'lucide-react'
+import { Activity, ArrowRight, BookOpenCheck, Camera, ImageIcon, Sparkles } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
@@ -25,13 +25,6 @@ const QUICK_ACTIONS = [
     icon: Camera,
     to: '/app/live',
     accent: 'bg-gradient-to-br from-primary to-primary-container text-[#0b1326]',
-  },
-  {
-    title: 'Upload Video',
-    description: 'Queue a clip, inspect transcript segments, and save it to your library.',
-    icon: CloudUpload,
-    to: '/app/upload',
-    accent: 'bg-surface-container text-on-surface',
   },
   {
     title: 'Practice Progress',

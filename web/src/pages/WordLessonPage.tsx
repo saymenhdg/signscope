@@ -171,12 +171,31 @@ export function WordLessonPage() {
     return lessonItems.filter((item) => supported.has(item.label.toUpperCase()))
   }, [lessonItems, vocabulary])
 
+  const practiceTargetOptions = useMemo(() => {
+    if (supportedLessonItems.length > 0) {
+      return supportedLessonItems.map((item) => item.label)
+    }
+    if (lessonItems.length > 0) {
+      return lessonItems.map((item) => item.label)
+    }
+    return vocabulary?.labels ?? []
+  }, [lessonItems, supportedLessonItems, vocabulary])
+
   const targetLessonItem = useMemo(() => {
     if (!targetWord) return null
     return lessonItems.find((item) => item.label.toUpperCase() === targetWord.toUpperCase()) ?? null
   }, [lessonItems, targetWord])
 
   const accuracy = sessionStats.attempts > 0 ? (sessionStats.correct / sessionStats.attempts) * 100 : 0
+
+  useEffect(() => {
+    if (practiceTargetOptions.length === 0) {
+      return
+    }
+    if (!targetWord || !practiceTargetOptions.includes(targetWord)) {
+      setTargetWord(practiceTargetOptions[0] ?? null)
+    }
+  }, [practiceTargetOptions, targetWord])
 
   function toggleReviewed(label: string) {
     setReviewed((current) =>
@@ -330,13 +349,9 @@ export function WordLessonPage() {
   }
 
   function randomizeTarget() {
-    const pool = (supportedLessonItems.length > 0 ? supportedLessonItems : lessonItems).map(
-      (item) => item.label,
-    )
-    const vocabPool = vocabulary?.labels ?? []
-    const candidates = pool.length > 0 ? pool : vocabPool
-    if (candidates.length === 0) return
-    const next = candidates[Math.floor(Math.random() * candidates.length)] ?? candidates[0]
+    if (practiceTargetOptions.length === 0) return
+    const next =
+      practiceTargetOptions[Math.floor(Math.random() * practiceTargetOptions.length)] ?? practiceTargetOptions[0]
     setTargetWord(next ?? null)
   }
 
@@ -454,6 +469,7 @@ export function WordLessonPage() {
             <PracticeMode
               health={health}
               vocabulary={vocabulary}
+              practiceTargetOptions={practiceTargetOptions}
               targetWord={targetWord}
               setTargetWord={setTargetWord}
               targetLessonItem={targetLessonItem}
@@ -565,11 +581,11 @@ function StudyMode({
         <Card className="rounded-[34px] border-outline-variant/12 bg-[linear-gradient(160deg,rgba(68,226,205,0.12),rgba(11,19,38,0.94)_55%),linear-gradient(180deg,#131b2e_0%,#091122_100%)] p-8">
           <Badge className="border-secondary/10 bg-secondary/10 text-secondary">Core vocabulary</Badge>
           <h2 className="mt-5 font-headline text-4xl font-extrabold tracking-tight text-on-surface">
-            Build a small word set the live model can actually grade.
+            Build a reference-backed word set the live model can actually grade.
           </h2>
           <p className="mt-5 text-base leading-8 text-on-surface-variant">
-            These words come from the best-performing word checkpoint in the workspace. Loop the clip,
-            rehearse in a mirror, and then flip to Practice to grade yourself against the recognizer.
+            These words come from the trained checkpoint labels that also have linked local reference videos.
+            Loop the clip, rehearse in a mirror, and then flip to Practice to grade yourself against the recognizer.
           </p>
 
           <div className="mt-10 space-y-3">
@@ -674,6 +690,7 @@ function StudyMode({
 type PracticeModeProps = {
   health: HealthResponse | null
   vocabulary: WordVocabularyResponse | null
+  practiceTargetOptions: string[]
   targetWord: string | null
   setTargetWord: (next: string | null) => void
   targetLessonItem: WordLessonItem | null
@@ -700,6 +717,7 @@ function PracticeMode(props: PracticeModeProps) {
   const {
     health,
     vocabulary,
+    practiceTargetOptions,
     targetWord,
     setTargetWord,
     targetLessonItem,
@@ -926,6 +944,7 @@ function PracticeMode(props: PracticeModeProps) {
                 muted
                 loop
                 playsInline
+                preload="metadata"
                 className="size-full object-cover"
               />
             ) : (
@@ -959,7 +978,7 @@ function PracticeMode(props: PracticeModeProps) {
                 onChange={(event) => setTargetWord(event.target.value || null)}
                 className="h-14 rounded-2xl border border-outline-variant/20 bg-surface-container px-4 text-on-surface outline-none transition-colors focus:border-secondary/60"
               >
-                {(vocabulary?.labels ?? []).map((label) => (
+                {practiceTargetOptions.map((label) => (
                   <option key={label} value={label}>
                     {label}
                   </option>
@@ -1064,10 +1083,10 @@ function WordCard({
           <video
             key={item.reference_video_path}
             src={`${API_BASE}${item.reference_video_path}`}
-            autoPlay
             muted
             loop
             playsInline
+            preload="metadata"
             className="size-full object-cover"
           />
         ) : (

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 
 from api.app.config import Settings, get_settings
 from api.app.db import get_db
@@ -47,3 +47,9 @@ def get_oauth_service() -> OAuthService:
 
 def get_current_user(request: Request, auth_service: AuthService = Depends(get_auth_service)) -> User:
     return auth_service.require_user(request)
+
+
+def get_current_teacher(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher access required.")
+    return current_user

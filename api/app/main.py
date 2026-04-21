@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from api.app.routers.analytics import router as analytics_router
 from api.app.routers.auth import router as auth_router
 from api.app.routers.inference import router as inference_router
 from api.app.routers.learning import router as learning_router
+from api.app.routers.teacher import router as teacher_router
 
 
 def create_app() -> FastAPI:
@@ -40,9 +42,15 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def on_startup() -> None:
         init_db()
+        from api.app.dependencies import get_alphabet_inference_service, get_word_inference_service
+        threading.Thread(
+            target=lambda: (get_alphabet_inference_service(), get_word_inference_service()),
+            daemon=True,
+        ).start()
 
     app.include_router(auth_router)
     app.include_router(analytics_router)
+    app.include_router(teacher_router)
     app.include_router(learning_router)
     app.include_router(inference_router)
     return app

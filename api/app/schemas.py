@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Literal
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -9,6 +10,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     display_name: str
+    role: Literal["student", "teacher"]
     age: int | None
     bio: str | None
     avatar_url: str | None
@@ -22,6 +24,11 @@ class AuthRequest(BaseModel):
 
 class RegisterRequest(AuthRequest):
     display_name: str = Field(..., min_length=2, max_length=80)
+    role: Literal["student", "teacher"] = "student"
+
+
+class LoginRequest(AuthRequest):
+    role: Literal["student", "teacher"] | None = None
 
 
 class AuthResponse(BaseModel):
@@ -63,6 +70,118 @@ class ProfileUpdateRequest(BaseModel):
 class MessageResponse(BaseModel):
     status: str
     detail: str
+
+
+class TeacherDashboardResponse(BaseModel):
+    profile_completion_percent: int
+    account_status: str
+    joined_at: str
+    readiness_checks: list[dict[str, Any]]
+    stats: dict[str, Any]
+    profile_card: dict[str, Any] | None = None
+    booking_requests: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class TeacherProfileCardUpdateRequest(BaseModel):
+    headline: str = Field(..., min_length=4, max_length=140)
+    intro: str = Field(..., min_length=12, max_length=500)
+    specialties: list[str] = Field(default_factory=list, max_length=6)
+    hourly_rate_usd: int | None = Field(default=None, ge=0, le=1000)
+    lesson_duration_minutes: int = Field(default=45, ge=15, le=180)
+    is_public: bool = False
+
+
+class TeacherProfileCardResponse(BaseModel):
+    teacher_id: int
+    display_name: str
+    avatar_url: str | None
+    headline: str | None
+    intro: str | None
+    specialties: list[str] = Field(default_factory=list)
+    hourly_rate_usd: int | None
+    lesson_duration_minutes: int
+    is_public: bool
+
+
+class TeacherDirectoryResponse(BaseModel):
+    teachers: list[TeacherProfileCardResponse]
+
+
+class LessonBookingCreateRequest(BaseModel):
+    scheduled_at: str
+    note: str | None = Field(default=None, max_length=500)
+    duration_minutes: int | None = Field(default=None, ge=15, le=180)
+
+
+class LessonBookingStatusUpdateRequest(BaseModel):
+    status: Literal["confirmed", "declined", "completed", "cancelled"]
+
+
+class LessonBookingResponse(BaseModel):
+    id: int
+    scheduled_at: str
+    duration_minutes: int
+    status: str
+    note: str | None
+    student_name: str
+    student_email: str
+    teacher_name: str
+    created_at: str
+
+
+class TeacherScheduleResponse(BaseModel):
+    bookings: list[LessonBookingResponse]
+    totals: dict[str, Any]
+
+
+class TeacherMessageThreadSummaryResponse(BaseModel):
+    thread_id: int
+    student_id: int
+    student_name: str
+    student_email: str
+    student_avatar_url: str | None = None
+    last_message_preview: str
+    last_message_at: str
+    unread_count: int = 0
+    booking_count: int = 0
+
+
+class TeacherMessageResponse(BaseModel):
+    id: int
+    sender_id: int
+    sender_name: str
+    body: str
+    created_at: str
+    is_own: bool
+
+
+class TeacherMessageThreadResponse(BaseModel):
+    thread: TeacherMessageThreadSummaryResponse
+    messages: list[TeacherMessageResponse] = Field(default_factory=list)
+
+
+class TeacherMessagesInboxResponse(BaseModel):
+    threads: list[TeacherMessageThreadSummaryResponse] = Field(default_factory=list)
+    unread_count: int = 0
+
+
+class TeacherMessageCreateRequest(BaseModel):
+    body: str = Field(..., min_length=1, max_length=2000)
+
+
+class TeacherNotificationItemResponse(BaseModel):
+    id: str
+    type: Literal["booking_request", "message"]
+    title: str
+    detail: str
+    created_at: str
+    action_path: str
+    count: int = 1
+
+
+class TeacherNotificationsResponse(BaseModel):
+    unread_count: int = 0
+    items: list[TeacherNotificationItemResponse] = Field(default_factory=list)
 
 
 class DashboardOverviewResponse(BaseModel):
@@ -254,4 +373,3 @@ class LearningAttemptRequest(BaseModel):
     is_correct: bool | None = None
     tracking_detected: bool = True
     valid_frame_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
-

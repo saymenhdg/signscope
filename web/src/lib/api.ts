@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8000'
+const DEFAULT_API_BASE = 'http://127.0.0.1:8000'
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '').trim() || DEFAULT_API_BASE
 
 type RequestOptions = RequestInit
 
@@ -17,11 +18,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers.set('Content-Type', 'application/json')
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    credentials: options.credentials ?? 'include',
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      credentials: options.credentials ?? 'include',
+    })
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Cannot reach the API at ${API_BASE}. Check that the backend is running and VITE_API_BASE is correct.`)
+    }
+    throw error
+  }
 
   if (!response.ok) {
     let message = 'Request failed.'

@@ -33,7 +33,8 @@ class LearningCatalogService:
             self.alphabet_guides = build_alphabet_guides(self.settings.alphabet_guide_records_path)
         except Exception:
             self.alphabet_guides = {}
-        self.word_lessons = build_word_lessons()
+        self.word_labels = self._load_word_labels()
+        self.word_lessons = build_word_lessons(allowed_labels=self.word_labels or None)
 
     def alphabet_lesson(self) -> AlphabetLessonResponse:
         labels = alphabet_sequence(list(self.alphabet_guides))
@@ -78,8 +79,8 @@ class LearningCatalogService:
             items=items,
             phrase_drills=[PhraseDrill(**item) for item in PHRASE_DRILLS],
             note=(
-                "This word track is curated around the seven most reliable words in the current PyTorch word model. "
-                "Use it as a guided vocabulary set before moving into longer sentence work."
+                "This word track is built from the trained checkpoint labels that also have local reference clips. "
+                "Study the looping videos first, then switch into live practice so the recognizer grades against the same vocabulary."
             ),
         )
 
@@ -91,3 +92,16 @@ class LearningCatalogService:
 
     def word_reference(self, label: str) -> Path | None:
         return word_reference_video(label)
+
+    def _load_word_labels(self) -> list[str]:
+        checkpoint_path = Path(self.settings.word_landmark_checkpoint)
+        if not checkpoint_path.exists():
+            return []
+        try:
+            import torch
+
+            checkpoint = torch.load(checkpoint_path, map_location="cpu")
+            labels = checkpoint.get("labels", []) if isinstance(checkpoint, dict) else []
+            return [str(label).upper() for label in labels]
+        except Exception:
+            return []

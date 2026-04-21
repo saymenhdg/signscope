@@ -12,8 +12,16 @@ import { LearningTestPage } from './pages/LearningTestPage'
 import { LivePage } from './pages/LivePage'
 import { ProgressPage } from './pages/ProgressPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { UploadPage } from './pages/UploadPage'
+import { TeacherDashboardPage } from './pages/TeacherDashboardPage'
+import { TeacherMessagesPage } from './pages/TeacherMessagesPage'
+import { TeacherSchedulePage } from './pages/TeacherSchedulePage'
+import { TeacherSettingsPage } from './pages/TeacherSettingsPage'
+import { TeachersPage } from './pages/TeachersPage'
 import { WordLessonPage } from './pages/WordLessonPage'
+
+function defaultAppPath(role: 'student' | 'teacher') {
+  return role === 'teacher' ? '/app/teacher' : '/app/dashboard'
+}
 
 function ProtectedRoutes() {
   const { user, loading } = useAuth()
@@ -36,9 +44,27 @@ function PublicOnlyRoute({ children }: { children: ReactNode }) {
     return <LoadingScreen />
   }
   if (user) {
-    return <Navigate to="/app/dashboard" replace />
+    return <Navigate to={defaultAppPath(user.role)} replace />
   }
   return <>{children}</>
+}
+
+function TeacherOnlyRoute() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (!user) {
+    return <Navigate to="/teacher/login" replace />
+  }
+
+  if (user.role !== 'teacher') {
+    return <Navigate to="/app/dashboard" replace />
+  }
+
+  return <Outlet />
 }
 
 function LoadingScreen() {
@@ -88,21 +114,57 @@ export default function App() {
           </PublicOnlyRoute>
         }
       />
+      <Route
+        path="/teacher/login"
+        element={
+          <PublicOnlyRoute>
+            <AuthPage mode="login" audience="teacher" />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/teacher/register"
+        element={
+          <PublicOnlyRoute>
+            <AuthPage mode="register" audience="teacher" />
+          </PublicOnlyRoute>
+        }
+      />
 
       <Route path="/app" element={<ProtectedRoutes />}>
-        <Route index element={<Navigate to="/app/dashboard" replace />} />
+        <Route
+          index
+          element={
+            <RoleRedirect />
+          }
+        />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="learn" element={<LearningHubPage />} />
         <Route path="learn/alphabet" element={<AlphabetLessonPage />} />
         <Route path="learn/words" element={<WordLessonPage />} />
         <Route path="learn/test" element={<LearningTestPage />} />
+        <Route path="teachers" element={<TeachersPage />} />
         <Route path="live" element={<LivePage />} />
-        <Route path="upload" element={<UploadPage />} />
+        <Route path="upload" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="progress" element={<ProgressPage />} />
         <Route path="profile" element={<ProfilePage />} />
+      </Route>
+      <Route path="/app/teacher" element={<TeacherOnlyRoute />}>
+        <Route index element={<TeacherDashboardPage />} />
+        <Route path="schedule" element={<TeacherSchedulePage />} />
+        <Route path="messages" element={<TeacherMessagesPage />} />
+        <Route path="settings" element={<TeacherSettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
+}
+
+function RoleRedirect() {
+  const { user } = useAuth()
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+  return <Navigate to={defaultAppPath(user.role)} replace />
 }

@@ -42,6 +42,7 @@ class AuthRepository:
         *,
         email: str,
         display_name: str,
+        role: str,
         age: int | None,
         bio: str | None,
         avatar_url: str | None,
@@ -52,6 +53,7 @@ class AuthRepository:
         user = User(
             email=email,
             display_name=display_name,
+            role=role,
             age=age,
             bio=bio,
             avatar_url=avatar_url,

@@ -9,10 +9,10 @@ from api.app.models import User
 from api.app.schemas import (
     AuthProviderOption,
     AuthProvidersResponse,
-    AuthRequest,
     AuthResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+    LoginRequest,
     MessageResponse,
     ProfileUpdateRequest,
     RegisterRequest,
@@ -49,6 +49,7 @@ def register(
         email=request.email,
         display_name=request.display_name,
         password=request.password,
+        role=request.role,
     )
     auth_service.attach_session_cookie(response, token, expires_at)
     return AuthResponse(expires_at=expires_at.isoformat(), user=auth_service.user_response(user))
@@ -56,11 +57,15 @@ def register(
 
 @router.post("/login", response_model=AuthResponse)
 def login(
-    request: AuthRequest,
+    request: LoginRequest,
     response: Response,
     auth_service: AuthService = Depends(get_auth_service),
 ) -> AuthResponse:
-    user, token, expires_at = auth_service.authenticate_user(email=request.email, password=request.password)
+    user, token, expires_at = auth_service.authenticate_user(
+        email=request.email,
+        password=request.password,
+        expected_role=request.role,
+    )
     auth_service.attach_session_cookie(response, token, expires_at)
     return AuthResponse(expires_at=expires_at.isoformat(), user=auth_service.user_response(user))
 

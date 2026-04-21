@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 import sqlite3
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from api.app.config import get_settings
@@ -51,6 +51,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     if engine.dialect.name == "sqlite":
         _upgrade_sqlite_schema(engine)
+    _ensure_user_role_column(engine)
 
 
 def _upgrade_sqlite_schema(engine) -> None:
@@ -152,6 +153,17 @@ def _upgrade_sqlite_schema(engine) -> None:
         raise
     finally:
         raw_connection.close()
+
+
+def _ensure_user_role_column(engine) -> None:
+    inspector = inspect(engine)
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    if "role" in user_columns:
+        return
+
+    statement = "ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'student'"
+    with engine.begin() as connection:
+        connection.execute(text(statement))
 
 
 def get_db() -> Generator[Session, None, None]:

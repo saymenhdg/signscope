@@ -19,6 +19,7 @@ from api.app.services.oauth_service import OAuthIdentity
 
 
 UTC = timezone.utc
+ALLOWED_USER_ROLES = {"student", "teacher"}
 
 
 @dataclass
@@ -32,7 +33,7 @@ class AuthService:
         self.tokens = SessionTokenManager()
         self.analytics = AnalyticsService(self.analytics_repository)
 
-    def register_user(self, *, email: str, display_name: str, password: str) -> tuple[User, str, datetime]:
+    def register_user(self, *, email: str, display_name: str, password: str, role: str = "student") -> tuple[User, str, datetime]:
         normalized_email = self._validate_email(email)
         if self.repository.email_exists(normalized_email):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with that email already exists.")
@@ -41,6 +42,7 @@ class AuthService:
         user = self.repository.create_user(
             email=normalized_email,
             display_name=self._normalized_display_name(display_name),
+            role=self._normalized_role(role),
             age=None,
             bio=None,
             avatar_url=None,
@@ -51,13 +53,24 @@ class AuthService:
         token, expires_at = self.create_session(user)
         return user, token, expires_at
 
-    def authenticate_user(self, *, email: str, password: str) -> tuple[User, str, datetime]:
+    def authenticate_user(
+        self,
+        *,
+        email: str,
+        password: str,
+        expected_role: str | None = None,
+    ) -> tuple[User, str, datetime]:
         normalized_email = self._validate_email(email)
         user = self.repository.get_user_by_email(normalized_email)
         if user is None or not user.password_hash or not user.password_salt:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
         if not self.passwords.verify_password(password, user.password_hash, user.password_salt):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+        if expected_role and user.role != self._normalized_role(expected_role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"This account does not have {expected_role} access.",
+            )
 
         token, expires_at = self.create_session(user)
         return user, token, expires_at
@@ -105,6 +118,7 @@ class AuthService:
             user = self.repository.create_user(
                 email=email,
                 display_name=self._normalized_display_name(identity.display_name or "SignSpeak User"),
+                role="student",
                 age=None,
                 bio=None,
                 avatar_url=identity.avatar_url,
@@ -248,6 +262,7 @@ class AuthService:
             id=user.id,
             email=user.email,
             display_name=user.display_name,
+            role=self._normalized_role(user.role),
             age=user.age,
             bio=user.bio,
             avatar_url=self._public_avatar_url(user.avatar_url),
@@ -318,6 +333,12 @@ class AuthService:
             return None
         normalized = value.strip()
         return normalized[:280] if normalized else None
+
+    def _normalized_role(self, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in ALLOWED_USER_ROLES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported account role.")
+        return normalized
 
     def _public_avatar_url(self, value: str | None) -> str | None:
         if not value:

@@ -52,7 +52,7 @@ export const SlidingCards = forwardRef<SlidingCardsHandle, SlidingCardsProps>(fu
   const [dragOffset, setDragOffset] = useState(0)
   const [animatingDirection, setAnimatingDirection] = useState<0 | 1 | -1>(0)
   const pointerStartX = useRef<number | null>(null)
-  const draggingRef = useRef(false)
+  const draggingRef = useRef(false) 
   const movedRef = useRef(false)
 
   useEffect(() => {

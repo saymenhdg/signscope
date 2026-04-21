@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -128,16 +129,27 @@ WORD_LESSONS: list[dict[str, Any]] = [
     },
 ]
 
+WORD_LESSON_TEMPLATE_MAP: dict[str, dict[str, Any]] = {
+    str(item["label"]).upper(): dict(item) for item in WORD_LESSONS
+}
+
+DEFAULT_WORD_REFERENCE_ROOTS: tuple[str, ...] = (
+    r"C:\Users\15047\Desktop\aslwords",
+    "data/core_words_45_mp",
+    "data/core_words_mp",
+    "data/sentence_words",
+)
+
 PHRASE_DRILLS: list[dict[str, Any]] = [
     {
-        "title": "Quick request",
-        "phrase": "PLEASE HELP",
-        "focus": "Practice calm starts and a strong finishing sign.",
+        "title": "Polite request",
+        "phrase": "PLEASE COME",
+        "focus": "Keep the first sign relaxed, then make the motion on COME finish cleanly toward the body.",
     },
     {
-        "title": "Personal need",
-        "phrase": "I NEED HELP",
-        "focus": "Keep each sign distinct and pause slightly between words.",
+        "title": "Daily check-in",
+        "phrase": "HOW YOU",
+        "focus": "Keep the transition between the question sign and the pointing sign deliberate and readable.",
     },
     {
         "title": "Short answer",
@@ -195,26 +207,167 @@ def alphabet_reference_video(label: str) -> Path | None:
     return None
 
 
-def build_word_lessons() -> list[dict[str, Any]]:
+def build_word_lessons(
+    *,
+    allowed_labels: list[str] | None = None,
+    reference_roots: tuple[str, ...] = DEFAULT_WORD_REFERENCE_ROOTS,
+) -> list[dict[str, Any]]:
+    roots = tuple(str(root) for root in reference_roots)
+    available = _word_reference_index(roots)
+
+    if allowed_labels:
+        labels = sorted({str(label).upper() for label in allowed_labels if str(label).upper() in available})
+    else:
+        labels = sorted(available)
+
+    if not labels:
+        labels = [str(item["label"]).upper() for item in WORD_LESSONS]
+
     lessons: list[dict[str, Any]] = []
-    for item in WORD_LESSONS:
-        lesson = dict(item)
-        lesson["reference_video_path"] = word_reference_video(item["label"])
+    for label in labels:
+        lesson = dict(_word_lesson_metadata(label))
+        lesson["reference_video_path"] = word_reference_video(label, reference_roots=roots)
         lessons.append(lesson)
     return lessons
 
 
-def word_reference_video(label: str) -> Path | None:
+def word_reference_video(
+    label: str,
+    *,
+    reference_roots: tuple[str, ...] = DEFAULT_WORD_REFERENCE_ROOTS,
+) -> Path | None:
+    return _word_reference_index(tuple(str(root) for root in reference_roots)).get(label.upper())
+
+
+@lru_cache(maxsize=4)
+def _word_reference_index(reference_roots: tuple[str, ...]) -> dict[str, Path]:
+    index: dict[str, Path] = {}
+    for root_value in reference_roots:
+        root = Path(root_value)
+        if not root.exists():
+            continue
+
+        if root.is_file() and root.suffix.lower() == ".mp4":
+            index.setdefault(root.stem.upper(), root)
+            continue
+
+        for child in root.iterdir():
+            if child.is_file() and child.suffix.lower() == ".mp4":
+                index.setdefault(child.stem.upper(), child)
+                continue
+
+            if child.is_dir():
+                nested = child / "0001.mp4"
+                if nested.exists():
+                    index.setdefault(child.name.upper(), nested)
+                    continue
+
+                first_clip = next(
+                    (item for item in sorted(child.iterdir()) if item.is_file() and item.suffix.lower() == ".mp4"),
+                    None,
+                )
+                if first_clip is not None:
+                    index.setdefault(child.name.upper(), first_clip)
+    return index
+
+
+def _word_lesson_metadata(label: str) -> dict[str, Any]:
+    template = WORD_LESSON_TEMPLATE_MAP.get(label.upper())
+    if template is not None:
+        return template
+
+    pretty = _humanize_word_label(label)
+    return {
+        "label": label.upper(),
+        "title": pretty,
+        "category": _word_category(label),
+        "difficulty": _word_difficulty(label),
+        "description": f"Practice {pretty.lower()} as part of short ASL phrases and everyday communication drills.",
+        "coach_tip": "Keep the handshape readable, stay centered in frame, and hold the ending position for a beat.",
+        "phrase": _word_phrase_hint(label),
+    }
+
+
+def _humanize_word_label(label: str) -> str:
+    words = str(label).replace("_", " ").split()
+    if not words:
+        return str(label).upper()
+    return " ".join(word if word == "I" else word.capitalize() for word in words)
+
+
+def _word_category(label: str) -> str:
     label = label.upper()
-    candidates = [
-        Path("data/core_words_45_mp") / label / "0001.mp4",
-        Path("data/core_words_mp") / label / "0001.mp4",
-        Path("data/sentence_words") / label / "0001.mp4",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return None
+    if label in {"WHAT", "WHEN", "WHERE", "WHO", "WHY", "HOW"}:
+        return "Questions"
+    if label in {"EAT", "DRINK", "PIZZA", "BANANA", "CANDY", "FORK", "GLASS", "WATER"}:
+        return "Daily Life"
+    if label in {"BABY", "DEAF", "FAMILY", "FRIEND", "PATIENT", "YOU", "I"}:
+        return "People"
+    if label in {"HELLO", "PLEASE", "YES", "NO", "GOOD", "LOVE", "MORE", "COME"}:
+        return "Conversation"
+    return "Core Words"
+
+
+def _word_difficulty(label: str) -> str:
+    label = label.upper()
+    if label in {
+        "HELLO",
+        "I",
+        "NO",
+        "PLEASE",
+        "YES",
+        "YOU",
+        "GOOD",
+        "MORE",
+        "EAT",
+        "DRINK",
+        "WANT",
+        "WHERE",
+        "WHAT",
+        "WHO",
+        "WHY",
+        "HOW",
+        "WHEN",
+    }:
+        return "starter"
+    return "core"
+
+
+def _word_phrase_hint(label: str) -> str:
+    label = label.upper()
+    phrase_map = {
+        "BABY": "BABY CRY",
+        "BAD": "NOT BAD",
+        "BANANA": "WANT BANANA",
+        "BOOK": "READ BOOK",
+        "CAN": "I CAN",
+        "COME": "COME HERE",
+        "DEAF": "DEAF FAMILY",
+        "DRINK": "WANT DRINK",
+        "EAT": "WANT EAT",
+        "FAMILY": "LOVE FAMILY",
+        "GOOD": "GOOD YOU",
+        "HELLO": "HELLO YOU",
+        "HOW": "HOW YOU",
+        "LOVE": "I LOVE YOU",
+        "MORE": "MORE PLEASE",
+        "NO": "NO THANKS",
+        "PLEASE": "PLEASE HELP",
+        "SCHOOL": "GO SCHOOL",
+        "STOP": "STOP PLEASE",
+        "WANT": "I WANT",
+        "WATER": "WANT WATER",
+        "WHAT": "WHAT NAME",
+        "WHEN": "WHEN COME",
+        "WHERE": "WHERE GO",
+        "WHO": "WHO YOU",
+        "WHY": "WHY SAD",
+        "WORK": "GO WORK",
+        "WRITE": "WRITE NAME",
+        "YES": "YES PLEASE",
+        "YOU": "THANK YOU",
+    }
+    return phrase_map.get(label, label)
 
 
 def _normalize_guide_points(points: np.ndarray) -> list[dict[str, float]]:

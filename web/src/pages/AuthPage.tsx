@@ -10,9 +10,10 @@ type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
 
 type AuthPageProps = {
   mode: AuthMode
+  audience?: 'student' | 'teacher'
 }
 
-export function AuthPage({ mode }: AuthPageProps) {
+export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -26,12 +27,15 @@ export function AuthPage({ mode }: AuthPageProps) {
   const [resetUrl, setResetUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/app/dashboard'
   const isRegister = mode === 'register'
   const isForgot = mode === 'forgot'
   const isReset = mode === 'reset'
+  const isTeacherAudience = audience === 'teacher'
   const authError = searchParams.get('authError')
   const resetToken = searchParams.get('token') ?? ''
+  const fallbackRedirect = isTeacherAudience ? '/app/teacher' : '/app/dashboard'
+  const requestedRedirect = (location.state as { from?: string } | null)?.from
+  const redirectTo = requestedRedirect ?? fallbackRedirect
 
   useEffect(() => {
     if (authError) {
@@ -65,12 +69,13 @@ export function AuthPage({ mode }: AuthPageProps) {
     void (async () => {
       try {
         if (isRegister) {
-          await signUp({
+          const user = await signUp({
             display_name: displayName.trim(),
             email: email.trim(),
             password,
+            role: audience,
           })
-          navigate(redirectTo, { replace: true })
+          navigate(requestedRedirect ?? (user.role === 'teacher' ? '/app/teacher' : '/app/dashboard'), { replace: true })
           return
         }
 
@@ -87,8 +92,8 @@ export function AuthPage({ mode }: AuthPageProps) {
           return
         }
 
-        await signIn({ email: email.trim(), password })
-        navigate(redirectTo, { replace: true })
+        const user = await signIn({ email: email.trim(), password, role: isTeacherAudience ? 'teacher' : undefined })
+        navigate(requestedRedirect ?? (user.role === 'teacher' ? '/app/teacher' : '/app/dashboard'), { replace: true })
       } catch (submitError) {
         setError(submitError instanceof Error ? submitError.message : 'Authentication failed.')
       } finally {
@@ -98,6 +103,8 @@ export function AuthPage({ mode }: AuthPageProps) {
   }
 
   function title() {
+    if (isTeacherAudience && isRegister) return 'Teacher Register'
+    if (isTeacherAudience) return 'Teacher Sign In'
     if (isRegister) return 'Register'
     if (isForgot) return 'Forgot Password'
     if (isReset) return 'Reset Password'
@@ -105,6 +112,8 @@ export function AuthPage({ mode }: AuthPageProps) {
   }
 
   function subtitle() {
+    if (isTeacherAudience && isRegister) return 'Create your teacher access.'
+    if (isTeacherAudience) return 'Enter the teaching workspace.'
     if (isRegister) return 'Start your workspace setup.'
     if (isForgot) return 'Generate a reset link for your account.'
     if (isReset) return 'Set a new password for your account.'
@@ -112,6 +121,8 @@ export function AuthPage({ mode }: AuthPageProps) {
   }
 
   function heroTitle() {
+    if (isTeacherAudience && isRegister) return 'Create your teacher portal.'
+    if (isTeacherAudience) return 'Manage lessons from one teacher workspace.'
     if (isRegister) return 'Create your translation workspace.'
     if (isForgot) return 'Recover access to your workspace.'
     if (isReset) return 'Set a new password and continue.'
@@ -119,6 +130,12 @@ export function AuthPage({ mode }: AuthPageProps) {
   }
 
   function heroText() {
+    if (isTeacherAudience && isRegister) {
+      return 'Register as a teacher to manage lesson availability, prepare your profile, and move into the booking workflow as it comes online.'
+    }
+    if (isTeacherAudience) {
+      return 'Sign in as a teacher to manage your teaching profile, review readiness, and move into the lesson scheduling workflow.'
+    }
     if (isRegister) {
       return 'Register once to unlock live translation, lesson tracking, upload review, and progress analytics inside one workspace.'
     }
@@ -177,7 +194,7 @@ export function AuthPage({ mode }: AuthPageProps) {
               </div>
             </div>
 
-            {providers.length > 0 && !isForgot && !isReset ? (
+            {providers.length > 0 && !isForgot && !isReset && !isTeacherAudience ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {providers.map((provider) => {
@@ -286,12 +303,16 @@ export function AuthPage({ mode }: AuthPageProps) {
                   {isSubmitting
                     ? 'Processing...'
                     : isRegister
-                      ? 'Create Account'
+                      ? isTeacherAudience
+                        ? 'Create Teacher Account'
+                        : 'Create Account'
                       : isForgot
                         ? 'Generate Reset Link'
                         : isReset
                           ? 'Update Password'
-                          : 'Sign In'}
+                          : isTeacherAudience
+                            ? 'Sign In as Teacher'
+                            : 'Sign In'}
                 </span>
                 <ArrowRight className="size-4" />
               </button>
@@ -304,18 +325,32 @@ export function AuthPage({ mode }: AuthPageProps) {
                 </Link>
                 <p>
                   Don&apos;t have an account?{' '}
-                  <Link to="/register" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
-                    Create one
+                  <Link
+                    to={isTeacherAudience ? '/teacher/register' : '/register'}
+                    className="font-semibold text-secondary transition-colors hover:text-secondary-fixed"
+                  >
+                    {isTeacherAudience ? 'Create a teacher account' : 'Create one'}
                   </Link>
                 </p>
+                {!isTeacherAudience ? (
+                  <p>
+                    Are you teaching on the platform?{' '}
+                    <Link to="/teacher/login" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
+                      Teacher sign in
+                    </Link>
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
             {mode === 'register' ? (
               <p className="mt-6 text-center text-sm text-on-surface-variant">
                 Already have an account?{' '}
-                <Link to="/login" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">
-                  Sign in
+                <Link
+                  to={isTeacherAudience ? '/teacher/login' : '/login'}
+                  className="font-semibold text-secondary transition-colors hover:text-secondary-fixed"
+                >
+                  {isTeacherAudience ? 'Teacher sign in' : 'Sign in'}
                 </Link>
               </p>
             ) : null}
