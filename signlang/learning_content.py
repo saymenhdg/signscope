@@ -183,6 +183,18 @@ def alphabet_reference_image(label: str) -> Path | None:
     return None
 
 
+def alphabet_reference_video(label: str) -> Path | None:
+    label = label.upper()
+    candidates = [
+        Path("asl references") / f"{label}.mp4",
+        Path("data/alphabet_videos") / f"{label}.mp4",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def build_word_lessons() -> list[dict[str, Any]]:
     lessons: list[dict[str, Any]] = []
     for item in WORD_LESSONS:

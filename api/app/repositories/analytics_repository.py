@@ -5,88 +5,103 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.app.models import PracticeSession, TranslationHistory, User
+from api.app.models import LearningAttempt, LearningSession
 
 
 class AnalyticsRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def count_practice_sessions(self, user_id: int) -> int:
-        statement = select(PracticeSession).where(PracticeSession.user_id == user_id)
-        return len(self.db.scalars(statement).all())
-
-    def get_practice_sessions(self, user_id: int) -> list[PracticeSession]:
+    def get_learning_sessions(self, user_id: int, *, limit: int | None = None) -> list[LearningSession]:
         statement = (
-            select(PracticeSession)
-            .where(PracticeSession.user_id == user_id)
-            .order_by(PracticeSession.practiced_on.desc(), PracticeSession.id.desc())
+            select(LearningSession)
+            .where(LearningSession.user_id == user_id)
+            .order_by(LearningSession.completed_at.desc(), LearningSession.id.desc())
         )
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(self.db.scalars(statement).all())
 
-    def get_translation_history(self, user_id: int) -> list[TranslationHistory]:
+    def get_learning_attempts(self, user_id: int, *, limit: int | None = None) -> list[LearningAttempt]:
         statement = (
-            select(TranslationHistory)
-            .where(TranslationHistory.user_id == user_id)
-            .order_by(TranslationHistory.created_at.desc(), TranslationHistory.id.desc())
+            select(LearningAttempt)
+            .where(LearningAttempt.user_id == user_id)
+            .order_by(LearningAttempt.occurred_at.desc(), LearningAttempt.id.desc())
         )
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(self.db.scalars(statement).all())
 
-    def create_practice_session(
+    def create_learning_session(
         self,
         *,
         user_id: int,
-        practiced_on: date,
-        accuracy: float,
+        track: str,
         category: str,
-        signs_mastered: int,
-        duration_minutes: int,
-    ) -> PracticeSession:
-        practice = PracticeSession(
+        unit_title: str,
+        source_type: str,
+        summary: str,
+        practiced_on: date,
+        started_at: datetime,
+        completed_at: datetime,
+        accuracy: float,
+        completed_items: int,
+        correct_items: int,
+        attempts_count: int,
+        duration_seconds: int,
+    ) -> LearningSession:
+        session = LearningSession(
             user_id=user_id,
-            practiced_on=practiced_on,
-            accuracy=accuracy,
+            track=track,
             category=category,
-            signs_mastered=signs_mastered,
-            duration_minutes=duration_minutes,
+            unit_title=unit_title,
+            source_type=source_type,
+            summary=summary,
+            practiced_on=practiced_on,
+            started_at=started_at,
+            completed_at=completed_at,
+            accuracy=accuracy,
+            completed_items=completed_items,
+            correct_items=correct_items,
+            attempts_count=attempts_count,
+            duration_seconds=duration_seconds,
         )
-        self.db.add(practice)
+        self.db.add(session)
         self.db.commit()
-        self.db.refresh(practice)
-        return practice
+        self.db.refresh(session)
+        return session
 
-    def create_translation_history(
+    def create_learning_attempt(
         self,
         *,
         user_id: int,
-        source_type: str,
-        transcript: str,
+        track: str,
+        category: str,
+        expected_label: str | None,
+        predicted_label: str,
         confidence: float,
-        created_at: datetime,
-    ) -> TranslationHistory:
-        history = TranslationHistory(
+        is_confident: bool,
+        is_correct: bool | None,
+        tracking_detected: bool,
+        valid_frame_ratio: float | None,
+        occurred_at: datetime,
+        session_id: int | None = None,
+    ) -> LearningAttempt:
+        attempt = LearningAttempt(
             user_id=user_id,
-            source_type=source_type,
-            transcript=transcript,
+            session_id=session_id,
+            track=track,
+            category=category,
+            expected_label=expected_label,
+            predicted_label=predicted_label,
             confidence=confidence,
-            created_at=created_at,
+            is_confident=is_confident,
+            is_correct=is_correct,
+            tracking_detected=tracking_detected,
+            valid_frame_ratio=valid_frame_ratio,
+            occurred_at=occurred_at,
         )
-        self.db.add(history)
+        self.db.add(attempt)
         self.db.commit()
-        self.db.refresh(history)
-        return history
-
-    def bulk_seed(
-        self,
-        *,
-        user: User,
-        practice_rows: list[PracticeSession],
-        history_rows: list[TranslationHistory],
-    ) -> None:
-        for row in practice_rows:
-            row.user_id = user.id
-            self.db.add(row)
-        for row in history_rows:
-            row.user_id = user.id
-            self.db.add(row)
-        self.db.commit()
+        self.db.refresh(attempt)
+        return attempt

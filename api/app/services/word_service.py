@@ -242,7 +242,7 @@ class WordInferenceService:
             raise HTTPException(status_code=503, detail=self._landmarker_error)
 
         try:
-            import mediapipe as mp  # Imported lazily — boot-time optional.
+            import mediapipe as mp  # Imported lazily; boot-time optional.
 
             from signlang.mediapipe_hands import ensure_model_asset
 
@@ -332,7 +332,7 @@ class WordInferenceService:
                 )
             return f"Recognized {predicted_label} at {confidence * 100:.0f}% confidence."
         if predicted_label == target_word and is_confident:
-            return f"Nice — {predicted_label} locked in at {confidence * 100:.0f}% confidence."
+            return f"Nice, {predicted_label} locked in at {confidence * 100:.0f}% confidence."
         if not is_confident:
             return (
                 f"Target {target_word}, saw {predicted_label} at {confidence * 100:.0f}%. "

@@ -41,6 +41,11 @@ POSE_POINTS = len(POSE_INDICES)
 #   - presence flags: 2 (left hand, right hand)
 PER_FRAME_FEATURE_DIM = HAND_POINTS * 3 * 2 + POSE_POINTS * 3 + 2
 
+# Permutation of POSE_INDICES positions that swaps each left-right pair:
+# nose(0), (l_eye 1 ↔ r_eye 2), (l_ear 3 ↔ r_ear 4), (l_sh 5 ↔ r_sh 6),
+# (l_el 7 ↔ r_el 8), (l_wr 9 ↔ r_wr 10), (l_hip 11 ↔ r_hip 12).
+POSE_FLIP_PERM: tuple[int, ...] = (0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11)
+
 
 @dataclass(frozen=True)
 class WordLandmarkRecord:
@@ -161,9 +166,77 @@ def resample_sequence(sequence: np.ndarray, target_length: int) -> np.ndarray:
     return sequence[indices].astype(np.float32, copy=False)
 
 
+def temporal_crop_sequence(sequence: np.ndarray, min_keep: float = 0.85) -> np.ndarray:
+    """Randomly crop a contiguous sub-window from a (T, F) source sequence.
+
+    Applied BEFORE the fixed-length resample so the model sees genuine
+    temporal variation (start/end trimmed at different points across epochs).
+    Uniform resampling cannot produce this on its own because it is
+    idempotent under uniform scaling of source length.
+    """
+
+    if sequence.ndim != 2:
+        raise ValueError(f"Expected (T, F) sequence, got shape {sequence.shape}")
+    total = sequence.shape[0]
+    if total <= 4:
+        return sequence
+    min_len = max(4, int(round(total * min_keep)))
+    if min_len >= total:
+        return sequence
+    crop_len = int(np.random.randint(min_len, total + 1))
+    max_start = total - crop_len
+    start = int(np.random.randint(0, max_start + 1)) if max_start > 0 else 0
+    return sequence[start : start + crop_len]
+
+
+def horizontal_flip_sequence(sequence: np.ndarray) -> np.ndarray:
+    """Return a left/right mirrored copy of a (T, PER_FRAME_FEATURE_DIM) sequence.
+
+    Swaps the two hand blocks, permutes left/right pose pairs, and negates the
+    x-coordinate of every landmark. Presence flags are swapped. ASL signs are
+    produced equivalently by left- or right-handed signers, so mirroring
+    roughly doubles the effective training distribution without re-extraction.
+    """
+
+    if sequence.ndim != 2 or sequence.shape[1] != PER_FRAME_FEATURE_DIM:
+        raise ValueError(
+            f"Expected (T, {PER_FRAME_FEATURE_DIM}) sequence, got {sequence.shape}"
+        )
+
+    T = sequence.shape[0]
+    out = sequence.astype(np.float32, copy=True)
+
+    left_slice = slice(0, HAND_POINTS * 3)
+    right_slice = slice(HAND_POINTS * 3, HAND_POINTS * 3 * 2)
+    pose_start = HAND_POINTS * 3 * 2
+    pose_end = pose_start + POSE_POINTS * 3
+
+    left_hand = out[:, left_slice].reshape(T, HAND_POINTS, 3)
+    right_hand = out[:, right_slice].reshape(T, HAND_POINTS, 3)
+    pose = out[:, pose_start:pose_end].reshape(T, POSE_POINTS, 3)
+
+    new_left = right_hand.copy()
+    new_right = left_hand.copy()
+    new_left[:, :, 0] *= -1.0
+    new_right[:, :, 0] *= -1.0
+
+    new_pose = pose[:, list(POSE_FLIP_PERM), :].copy()
+    new_pose[:, :, 0] *= -1.0
+
+    out[:, left_slice] = new_left.reshape(T, -1)
+    out[:, right_slice] = new_right.reshape(T, -1)
+    out[:, pose_start:pose_end] = new_pose.reshape(T, -1)
+
+    left_flag = out[:, pose_end].copy()
+    out[:, pose_end] = out[:, pose_end + 1]
+    out[:, pose_end + 1] = left_flag
+    return out
+
+
 def augment_sequence(sequence: np.ndarray) -> np.ndarray:
     """Apply lightweight training augmentation to a (T, F) feature sequence.
 
+    - 50% horizontal mirror (hands + pose pairs swapped, x negated)
     - Small rotation around the shoulder center in the xy plane
     - Scale jitter
     - Gaussian jitter on xyz coordinates (presence flags are preserved)
@@ -173,6 +246,9 @@ def augment_sequence(sequence: np.ndarray) -> np.ndarray:
     augmented = sequence.astype(np.float32, copy=True)
     if augmented.size == 0:
         return augmented
+
+    if np.random.rand() < 0.5:
+        augmented = horizontal_flip_sequence(augmented)
 
     frames, _ = augmented.shape
     coord_slice = slice(0, PER_FRAME_FEATURE_DIM - 2)

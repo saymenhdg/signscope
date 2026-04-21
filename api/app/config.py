@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     alphabet_threshold: float = 0.45
     alphabet_min_margin: float = 0.10
 
-    word_landmark_checkpoint: str = "artifacts/word_landmarks_v2/best.pt"
+    word_landmark_checkpoint: str = "artifacts/word_landmarks_v12/best.pt"
     word_sequence_length: int = 32
     word_top_k: int = 5
     word_min_valid_frame_ratio: float = 0.35

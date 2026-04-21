@@ -26,6 +26,7 @@ import { Progress } from '../components/ui/progress'
 import { apiRequest, API_BASE } from '../lib/api'
 import type { HealthResponse, PredictResponse } from '../lib/types'
 import { cn } from '../lib/utils'
+import { queryClient } from '../lib/query'
 
 const LIVE_POLL_INTERVAL_MS = 450
 const LIVE_CAPTURE_MAX_WIDTH = 640
@@ -38,6 +39,16 @@ type LivePageProps = {
   title?: string
   subtitle?: string
   showLearnSubnav?: boolean
+}
+
+type AttemptRecord = {
+  expected_label: string | null
+  predicted_label: string
+  confidence: number
+  is_confident: boolean
+  is_correct: boolean | null
+  tracking_detected: boolean
+  valid_frame_ratio: number | null
 }
 
 export function LivePage({
@@ -53,6 +64,9 @@ export function LivePage({
   const stableCandidateRef = useRef<string | null>(null)
   const stableCandidateCountRef = useRef(0)
   const committedPredictionRef = useRef<string | null>(null)
+  const sessionStartRef = useRef<number | null>(null)
+  const attemptLogRef = useRef<AttemptRecord[]>([])
+  const sessionSavingRef = useRef(false)
 
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [labels, setLabels] = useState<string[]>([])
@@ -71,6 +85,7 @@ export function LivePage({
   useEffect(() => {
     void loadBootstrap()
     return () => {
+      void persistSessionSnapshot()
       stopCamera()
     }
   }, [])
@@ -188,6 +203,9 @@ export function LivePage({
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
+      if (sessionStartRef.current === null) {
+        sessionStartRef.current = Date.now()
+      }
       resetPredictionLock(true)
       setResult(null)
       setCameraActive(true)
@@ -257,6 +275,17 @@ export function LivePage({
     }
 
     committedPredictionRef.current = lockedPrediction
+    const attemptRecord: AttemptRecord = {
+      expected_label: targetLetter,
+      predicted_label: lockedPrediction,
+      confidence: payload.confidence,
+      is_confident: payload.is_confident,
+      is_correct: payload.matches_target,
+      tracking_detected: payload.tracking_detected,
+      valid_frame_ratio: null,
+    }
+    attemptLogRef.current = [...attemptLogRef.current, attemptRecord]
+    void persistAttempt(attemptRecord)
     startTransition(() => {
       setAttempts((current) => current + 1)
       if (payload.matches_target) {
@@ -278,10 +307,75 @@ export function LivePage({
   }
 
   function resetScoreboard() {
+    void persistSessionSnapshot()
     committedPredictionRef.current = null
     setAttempts(0)
     setCorrect(0)
     resetPredictionLock(false)
+    attemptLogRef.current = []
+    sessionStartRef.current = Date.now()
+  }
+
+  async function persistAttempt(attempt: AttemptRecord) {
+    try {
+      await apiRequest('/api/learn/attempt', {
+        method: 'POST',
+        body: JSON.stringify({
+          track: 'alphabet',
+          category: showLearnSubnav ? 'Learning Test' : 'Live Alphabet',
+          expected_label: attempt.expected_label,
+          predicted_label: attempt.predicted_label,
+          confidence: attempt.confidence,
+          is_confident: attempt.is_confident,
+          is_correct: attempt.is_correct,
+          tracking_detected: attempt.tracking_detected,
+          valid_frame_ratio: attempt.valid_frame_ratio,
+        }),
+      })
+    } catch {
+      // Best-effort analytics tracking.
+    }
+  }
+
+  async function persistSessionSnapshot() {
+    if (sessionSavingRef.current) {
+      return
+    }
+    const attemptsSnapshot = attemptLogRef.current.slice()
+    if (attemptsSnapshot.length === 0) {
+      return
+    }
+
+    sessionSavingRef.current = true
+    const correctCount = attemptsSnapshot.filter((attempt) => attempt.is_correct).length
+    const startedAt = sessionStartRef.current ?? Date.now()
+    const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
+
+    try {
+      await apiRequest('/api/learn/session', {
+        method: 'POST',
+        body: JSON.stringify({
+          track: 'alphabet',
+          category: showLearnSubnav ? 'Learning Test' : 'Live Alphabet',
+          source_type: showLearnSubnav ? 'learning-test' : 'live-camera',
+          unit_title: title,
+          accuracy: attemptsSnapshot.length > 0 ? (correctCount / attemptsSnapshot.length) * 100 : 0,
+          completed_items: attemptsSnapshot.length,
+          correct_items: correctCount,
+          attempts_count: attemptsSnapshot.length,
+          duration_seconds: durationSeconds,
+          summary: `${correctCount}/${attemptsSnapshot.length} graded alphabet reads matched the target.`,
+        }),
+      })
+      attemptLogRef.current = []
+      sessionStartRef.current = Date.now()
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
+      await queryClient.invalidateQueries({ queryKey: ['progress-overview'] })
+    } catch {
+      // Best-effort analytics tracking.
+    } finally {
+      sessionSavingRef.current = false
+    }
   }
 
   function captureCurrentFrame() {

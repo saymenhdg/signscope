@@ -56,6 +56,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="data/word_raw_v1")
     parser.add_argument("--cache-dir", default=".cache/huggingface")
     parser.add_argument("--max-per-word", type=int, default=40)
+    parser.add_argument(
+        "--row-offset",
+        type=int,
+        default=0,
+        help="Skip the first N shuffled rows per word. Use this to add more clips beyond an earlier pack without re-downloading duplicates.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--part-prefixes", nargs="*", default=[f"part_{index}" for index in range(1, 12)])
     parser.add_argument(
@@ -107,15 +113,24 @@ def main() -> None:
         folder_name = word.replace(" ", "_")
         word_dir = output_dir / folder_name
         word_dir.mkdir(parents=True, exist_ok=True)
-        existing_files = sorted(path for path in word_dir.iterdir() if path.is_file())
-        downloaded_for_word = len(existing_files)
-        if downloaded_for_word >= args.max_per_word:
-            print(f"{word}: already has {downloaded_for_word} clips in {word_dir}")
-            continue
 
-        for row in tqdm(rows, desc=f"Downloading {word}", leave=False):
-            if downloaded_for_word >= args.max_per_word:
+        # Slot-based naming: row index N maps deterministically to file
+        # ``f"{N+1:04d}.<ext>"``. This makes the download idempotent — a
+        # re-run with a higher ``--max-per-word`` only fills in missing slots
+        # instead of re-downloading rows 0..39 as fresh 0041-0060 (a bug in
+        # the original count-based naming).
+        new_for_word = 0
+        existing_slots = 0
+        for row_idx, row in enumerate(tqdm(rows, desc=f"Downloading {word}", leave=False)):
+            slot_num = row_idx + 1
+            if slot_num <= args.row_offset:
+                continue
+            if slot_num > args.max_per_word:
                 break
+            existing = list(word_dir.glob(f"{slot_num:04d}.*"))
+            if existing:
+                existing_slots += 1
+                continue
             try:
                 relative_path = resolve_video_path(args.repo_id, row, args.part_prefixes)
                 downloaded_path = hf_hub_download(
@@ -128,12 +143,13 @@ def main() -> None:
                 print(f"Skipping {word} sample {row.get('videos', '<unknown>')}: {exc}")
                 continue
 
-            destination = word_dir / f"{downloaded_for_word + 1:04d}{Path(relative_path).suffix.lower()}"
+            destination = word_dir / f"{slot_num:04d}{Path(relative_path).suffix.lower()}"
             shutil.copy2(downloaded_path, destination)
-            downloaded_for_word += 1
+            new_for_word += 1
             copied += 1
 
-        print(f"{word}: downloaded {downloaded_for_word} clips to {word_dir}")
+        total_for_word = existing_slots + new_for_word
+        print(f"{word}: {new_for_word} new, {existing_slots} already present (total {total_for_word}) in {word_dir}")
 
     print(f"Finished. Downloaded {copied} video clips into {output_dir.resolve()}")
     if missing_words:

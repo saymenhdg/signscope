@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from sklearn.metrics import classification_report
 from torch import nn
@@ -52,6 +53,12 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Oversample weaker classes during training.",
+    )
+    parser.add_argument(
+        "--cutmix-alpha",
+        type=float,
+        default=0.0,
+        help="Beta distribution alpha for time-axis CutMix on train batches. 0 disables.",
     )
     return parser.parse_args()
 
@@ -154,6 +161,7 @@ def main() -> None:
             device=device,
             train=True,
             description=f"Epoch {epoch}/{args.epochs} [train]",
+            cutmix_alpha=args.cutmix_alpha,
         )
         val_metrics = run_epoch(
             model=model,
@@ -276,6 +284,38 @@ def _build_train_sampler(records: list[WordLandmarkRecord]) -> WeightedRandomSam
     )
 
 
+def _apply_time_cutmix(
+    sequences: torch.Tensor,
+    targets: torch.Tensor,
+    alpha: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
+    """Replace a contiguous time window in each sample with the same window from a permuted sample.
+
+    Returns ``(mixed_sequences, targets_a, targets_b, lam)`` where ``lam`` is
+    the fraction of the original (targets_a) sequence retained.  If the sampled
+    cut is empty or spans the whole sequence, cutmix is skipped and the
+    original batch is returned with ``lam = 1.0``.
+    """
+
+    batch_size, time_len, _ = sequences.shape
+    if batch_size < 2 or time_len < 4 or alpha <= 0.0:
+        return sequences, targets, targets, 1.0
+
+    lam_sample = float(np.random.beta(alpha, alpha))
+    cut_len = int(round((1.0 - lam_sample) * time_len))
+    if cut_len <= 0 or cut_len >= time_len:
+        return sequences, targets, targets, 1.0
+
+    permutation = torch.randperm(batch_size, device=sequences.device)
+    cut_start = int(np.random.randint(0, time_len - cut_len + 1))
+    mixed = sequences.clone()
+    mixed[:, cut_start : cut_start + cut_len, :] = sequences[
+        permutation, cut_start : cut_start + cut_len, :
+    ]
+    effective_lam = 1.0 - cut_len / time_len
+    return mixed, targets, targets[permutation], effective_lam
+
+
 def run_epoch(
     model: WordLandmarkRecognizer,
     loader: DataLoader,
@@ -285,6 +325,7 @@ def run_epoch(
     device: torch.device,
     train: bool,
     description: str,
+    cutmix_alpha: float = 0.0,
 ) -> dict[str, Any]:
     if train:
         model.train()
@@ -306,9 +347,21 @@ def run_epoch(
             assert optimizer is not None
             optimizer.zero_grad(set_to_none=True)
 
+        if train and cutmix_alpha > 0.0:
+            sequences, targets_a, targets_b, lam = _apply_time_cutmix(
+                sequences, targets, cutmix_alpha
+            )
+        else:
+            targets_a = targets
+            targets_b = targets
+            lam = 1.0
+
         with (torch.autocast(device_type="cuda", dtype=torch.float16) if device.type == "cuda" else nullcontext()):
             logits = model(sequences)
-            loss = criterion(logits, targets)
+            if train and lam < 1.0:
+                loss = lam * criterion(logits, targets_a) + (1.0 - lam) * criterion(logits, targets_b)
+            else:
+                loss = criterion(logits, targets_a)
 
         if train:
             assert optimizer is not None
@@ -323,9 +376,12 @@ def run_epoch(
         batch_size = targets.size(0)
         running_loss += loss.item() * batch_size
         total += batch_size
-        correct += int((predictions == targets).sum().item())
+        # For mixed batches, credit a correct prediction toward whichever label
+        # dominates the mix (argmax(lam, 1-lam) = targets_a when lam >= 0.5).
+        reference_targets = targets_a if lam >= 0.5 else targets_b
+        correct += int((predictions == reference_targets).sum().item())
         all_predictions.extend(predictions.detach().cpu().tolist())
-        all_targets.extend(targets.detach().cpu().tolist())
+        all_targets.extend(reference_targets.detach().cpu().tolist())
         progress.set_postfix(loss=running_loss / max(total, 1), acc=correct / max(total, 1))
 
     return {

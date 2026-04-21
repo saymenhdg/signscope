@@ -48,7 +48,6 @@ class AuthService:
             password_salt=password_salt,
             is_email_verified=False,
         )
-        self.analytics.ensure_user_seeded(user)
         token, expires_at = self.create_session(user)
         return user, token, expires_at
 
@@ -60,7 +59,6 @@ class AuthService:
         if not self.passwords.verify_password(password, user.password_hash, user.password_salt):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
-        self.analytics.ensure_user_seeded(user)
         token, expires_at = self.create_session(user)
         return user, token, expires_at
 
@@ -134,7 +132,6 @@ class AuthService:
         else:
             self.repository.update_oauth_account_email(account, identity.email)
 
-        self.analytics.ensure_user_seeded(user)
         token, expires_at = self.create_session(user)
         return user, token, expires_at
 

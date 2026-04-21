@@ -1,4 +1,4 @@
-import { Award, Flame, TrendingUp } from 'lucide-react'
+import { Award, Flame, History, Target, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { AppShell } from '../components/app-shell'
@@ -21,11 +21,17 @@ export function ProgressPage() {
     queryKey: ['progress-overview'],
     queryFn: () => apiRequest<ProgressOverview>('/api/progress/overview'),
   })
+  const categories = overview?.categories ?? []
+  const weakAreas = overview?.weak_areas ?? []
+  const achievements = overview?.achievements ?? []
+  const trackBreakdown = overview?.track_breakdown ?? []
+  const focusLabels = overview?.focus_labels ?? []
+  const recentSessions = overview?.recent_sessions ?? []
 
   return (
     <AppShell
       title="Progress Analytics"
-      subtitle="Track activity heatmaps, weekly model confidence, weak areas, and achievement progress from the authenticated FastAPI session."
+      subtitle="Track activity heatmaps, weekly accuracy, weak areas, and achievement progress from your recorded learning sessions."
     >
       {error && (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
@@ -150,7 +156,7 @@ export function ProgressPage() {
           <CardDescription className="mt-1">How the current practice set is distributed by category.</CardDescription>
           <div className="mt-8 space-y-5">
             {overview ? (
-              overview.categories.map((category) => (
+              categories.map((category) => (
                 <div key={category.name} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold text-on-surface">{category.name}</span>
@@ -178,11 +184,60 @@ export function ProgressPage() {
 
       <section className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Track Breakdown</CardTitle>
+              <CardDescription>Compare alphabet coaching against word practice using recorded sessions.</CardDescription>
+            </div>
+            <Target className="size-5 text-secondary" />
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {overview ? (
+              trackBreakdown.length > 0 ? (
+                trackBreakdown.map((track) => (
+                <div
+                  key={track.track}
+                  className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-on-surface">{track.label}</p>
+                      <p className="mt-1 text-sm text-on-surface-variant">
+                        {track.sessions} sessions • {track.attempts} graded attempts
+                      </p>
+                    </div>
+                    <span className="font-headline text-3xl font-black text-on-surface">{track.accuracy}%</span>
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-container-highest">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-700"
+                      style={{ width: `${track.percent}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 text-sm text-on-surface-variant">{track.correct} correct reads recorded.</p>
+                </div>
+                ))
+              ) : (
+                <EmptyState copy="Track comparison appears once graded alphabet or word practice has been recorded." />
+              )
+            ) : (
+              Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="mt-3 h-3 w-32" />
+                  <Skeleton className="mt-4 h-2 w-full rounded-full" />
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
           <CardTitle>Weak Areas</CardTitle>
           <CardDescription className="mt-1">These categories are currently pulling your average down.</CardDescription>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {overview ? (
-              overview.weak_areas.map((item) => (
+              weakAreas.map((item) => (
                 <div key={item.name} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high">
                   <p className="font-semibold text-on-surface">{item.name}</p>
                   <p className="mt-2 text-sm text-on-surface-variant">Accuracy: {item.accuracy}%</p>
@@ -204,7 +259,7 @@ export function ProgressPage() {
           <CardDescription className="mt-1">Milestones unlocked by your current account activity.</CardDescription>
           <div className="mt-8 space-y-4">
             {overview ? (
-              overview.achievements.map((achievement) => (
+              achievements.map((achievement) => (
                 <div
                   key={achievement.name}
                   className={cn(
@@ -223,6 +278,103 @@ export function ProgressPage() {
                 <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
                   <Skeleton className="h-4 w-28" />
                   <Skeleton className="mt-3 h-3 w-full" />
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+        <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Focus Queue</CardTitle>
+              <CardDescription>Labels with the weakest recent accuracy should be your next reps.</CardDescription>
+            </div>
+            <Target className="size-5 text-secondary" />
+          </div>
+          <div className="mt-8 space-y-4">
+            {overview ? (
+              focusLabels.length > 0 ? (
+                focusLabels.map((item) => (
+                  <div
+                    key={`${item.track}-${item.label}`}
+                    className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-on-surface">{item.label}</p>
+                        <p className="mt-1 text-sm uppercase tracking-[0.2em] text-on-surface-variant">{item.track}</p>
+                      </div>
+                      <span className="font-mono text-sm text-secondary">{item.accuracy}%</span>
+                    </div>
+                    <p className="mt-3 text-sm text-on-surface-variant">{item.attempts} graded attempts recorded.</p>
+                  </div>
+                ))
+              ) : (
+                <EmptyState copy="Not enough repeated labels yet. Once the same letter or word has been graded at least twice, it will appear here." />
+              )
+            ) : (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="mt-3 h-3 w-16" />
+                  <Skeleton className="mt-3 h-3 w-32" />
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>Recent Sessions</CardTitle>
+              <CardDescription>Latest graded alphabet and word runs written back from the live app.</CardDescription>
+            </div>
+            <History className="size-5 text-secondary" />
+          </div>
+          <div className="mt-8 space-y-4">
+            {overview ? (
+              recentSessions.length > 0 ? (
+                recentSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5 transition-colors hover:bg-surface-container-high"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-on-surface">{session.unit_title}</p>
+                        <p className="mt-1 text-sm text-on-surface-variant">
+                          {session.category} • {session.track}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-headline text-2xl font-black text-on-surface">{session.accuracy}%</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-on-surface-variant">accuracy</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <SessionMeta label="Correct" value={`${session.correct_items}/${session.attempts_count || session.completed_items}`} />
+                      <SessionMeta label="Duration" value={`${session.duration_minutes} min`} />
+                      <SessionMeta label="Finished" value={formatSessionTime(session.completed_at)} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState copy="No graded sessions yet. Run an alphabet coach or word studio session and it will show up here." />
+              )
+            ) : (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-3xl border border-outline-variant/10 bg-surface-container p-5">
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="mt-3 h-3 w-24" />
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <Skeleton className="h-10 rounded-2xl" />
+                    <Skeleton className="h-10 rounded-2xl" />
+                    <Skeleton className="h-10 rounded-2xl" />
+                  </div>
                 </div>
               ))
             )}
@@ -263,4 +415,44 @@ function MetricCard({
       </div>
     </Card>
   )
+}
+
+function SessionMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-outline-variant/10 bg-surface-container-low px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-on-surface">{value}</p>
+    </div>
+  )
+}
+
+function EmptyState({ copy }: { copy: string }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container p-6 text-sm leading-7 text-on-surface-variant">
+      {copy}
+    </div>
+  )
+}
+
+function formatSessionTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return 'Recent'
+  }
+
+  const now = Date.now()
+  const diffMs = now - date.getTime()
+  const diffMinutes = Math.floor(diffMs / 60_000)
+  if (diffMinutes < 60) {
+    return `${Math.max(1, diffMinutes)}m ago`
+  }
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) {
+    return `${diffHours}h ago`
+  }
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) {
+    return `${diffDays}d ago`
+  }
+  return date.toLocaleDateString()
 }

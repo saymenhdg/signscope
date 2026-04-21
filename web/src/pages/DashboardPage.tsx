@@ -51,7 +51,7 @@ export function DashboardPage() {
   return (
     <AppShell
       title="Dashboard"
-      subtitle="Route through live translation, recent transcripts, and the practice data coming back from FastAPI."
+      subtitle="Route through live learning, recent graded sessions, and the practice data coming back from FastAPI."
     >
       {error && (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error">
@@ -173,7 +173,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <CardTitle>Recent Translations</CardTitle>
-                <CardDescription>Saved transcript snippets generated from the seeded FastAPI history.</CardDescription>
+                <CardDescription>Recent saved learning sessions and their graded summaries.</CardDescription>
               </div>
               <ImageIcon className="size-5 text-secondary" />
             </div>

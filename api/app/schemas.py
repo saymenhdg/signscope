@@ -80,6 +80,9 @@ class ProgressOverviewResponse(BaseModel):
     categories: list[dict[str, Any]]
     weak_areas: list[dict[str, Any]]
     achievements: list[dict[str, Any]]
+    track_breakdown: list[dict[str, Any]] = Field(default_factory=list)
+    focus_labels: list[dict[str, Any]] = Field(default_factory=list)
+    recent_sessions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
@@ -148,6 +151,7 @@ class AlphabetLessonItem(BaseModel):
     motion_letter: bool
     guide_points: list[GuidePoint]
     reference_image_path: str | None
+    reference_video_path: str | None
 
 
 class AlphabetLessonResponse(BaseModel):
@@ -229,8 +233,25 @@ class WordVocabularyResponse(BaseModel):
 
 class LearningSessionRequest(BaseModel):
     track: str = Field(..., min_length=3, max_length=32)
+    category: str | None = Field(default=None, min_length=2, max_length=80)
+    source_type: str | None = Field(default=None, min_length=2, max_length=80)
     unit_title: str = Field(..., min_length=2, max_length=80)
     accuracy: float = Field(..., ge=0.0, le=100.0)
     completed_items: int = Field(..., ge=1, le=200)
+    correct_items: int | None = Field(default=None, ge=0, le=500)
+    attempts_count: int | None = Field(default=None, ge=0, le=500)
     duration_seconds: int = Field(..., ge=1, le=14400)
     summary: str = Field(..., min_length=4, max_length=280)
+
+
+class LearningAttemptRequest(BaseModel):
+    track: str = Field(..., min_length=3, max_length=32)
+    category: str = Field(..., min_length=2, max_length=80)
+    expected_label: str | None = Field(default=None, min_length=1, max_length=64)
+    predicted_label: str = Field(..., min_length=1, max_length=64)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    is_confident: bool
+    is_correct: bool | None = None
+    tracking_detected: bool = True
+    valid_frame_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
+

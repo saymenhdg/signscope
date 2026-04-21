@@ -38,6 +38,8 @@ class User(TimestampMixin, Base):
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     translation_history: Mapped[list["TranslationHistory"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     practice_sessions: Mapped[list["PracticeSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    learning_sessions: Mapped[list["LearningSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    learning_attempts: Mapped[list["LearningAttempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class OAuthAccount(TimestampMixin, Base):
@@ -103,3 +105,47 @@ class PracticeSession(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer)
 
     user: Mapped[User] = relationship(back_populates="practice_sessions")
+
+
+class LearningSession(TimestampMixin, Base):
+    __tablename__ = "learning_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    track: Mapped[str] = mapped_column(String(32), index=True)
+    category: Mapped[str] = mapped_column(String(80), index=True)
+    unit_title: Mapped[str] = mapped_column(String(120))
+    source_type: Mapped[str] = mapped_column(String(80), index=True)
+    summary: Mapped[str] = mapped_column(Text)
+    practiced_on: Mapped[date] = mapped_column(Date, default=date.today, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    accuracy: Mapped[float] = mapped_column(Float, default=0.0)
+    completed_items: Mapped[int] = mapped_column(Integer, default=0)
+    correct_items: Mapped[int] = mapped_column(Integer, default=0)
+    attempts_count: Mapped[int] = mapped_column(Integer, default=0)
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped[User] = relationship(back_populates="learning_sessions")
+    attempts: Mapped[list["LearningAttempt"]] = relationship(back_populates="session", cascade="all, delete-orphan")
+
+
+class LearningAttempt(TimestampMixin, Base):
+    __tablename__ = "learning_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("learning_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    track: Mapped[str] = mapped_column(String(32), index=True)
+    category: Mapped[str] = mapped_column(String(80), index=True)
+    expected_label: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    predicted_label: Mapped[str] = mapped_column(String(64), index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    is_confident: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    tracking_detected: Mapped[bool] = mapped_column(Boolean, default=True)
+    valid_frame_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+    user: Mapped[User] = relationship(back_populates="learning_attempts")
+    session: Mapped[LearningSession | None] = relationship(back_populates="attempts")

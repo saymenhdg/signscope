@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -37,7 +38,33 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--frames-per-video", type=int, default=32)
     parser.add_argument("--min-detection-confidence", type=float, default=0.5)
     parser.add_argument("--min-tracking-confidence", type=float, default=0.5)
+    parser.add_argument(
+        "--existing-records",
+        nargs="*",
+        default=None,
+        help="One or more existing records.json files. Videos whose source_path is already present will be skipped so only new clips get processed.",
+    )
     return parser.parse_args()
+
+
+def _load_already_extracted_paths(record_paths: list[str] | None) -> set[str]:
+    if not record_paths:
+        return set()
+    seen: set[str] = set()
+    for path_str in record_paths:
+        path = Path(path_str)
+        if not path.exists():
+            print(f"Warning: --existing-records file not found: {path}")
+            continue
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        records = payload["records"] if isinstance(payload, dict) else payload
+        for item in records:
+            source_path = item.get("source_path")
+            if source_path:
+                # Normalize so Windows paths compare consistently regardless of
+                # how they were serialized.
+                seen.add(str(Path(source_path)).lower())
+    return seen
 
 
 def main() -> None:
@@ -47,6 +74,17 @@ def main() -> None:
         classes=args.classes,
         max_per_class=args.max_videos_per_class,
     )
+    already_extracted = _load_already_extracted_paths(args.existing_records)
+    if already_extracted:
+        original_count = len(records)
+        records = [
+            record for record in records
+            if str(record.path).lower() not in already_extracted
+        ]
+        print(
+            f"Filtered {original_count - len(records)} already-extracted videos; "
+            f"{len(records)} remain"
+        )
     output_path = Path(args.output_path)
     ensure_dir(output_path.parent)
 

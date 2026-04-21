@@ -8,6 +8,7 @@ import {
 } from 'react'
 
 import { API_BASE, apiRequest } from './api'
+import { queryClient } from './query'
 import type { AuthProvidersResponse, AuthResponse, AuthProviderOption, ForgotPasswordResponse, User } from './types'
 
 type Credentials = {
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       method: 'POST',
       body: JSON.stringify(payload),
     })
+    await queryClient.clear()
     setUser(response.user)
     return response.user
   }
@@ -112,6 +114,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch {
       // Best-effort logout.
     }
+    await queryClient.clear()
     setUser(null)
   }
 

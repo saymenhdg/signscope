@@ -23,6 +23,7 @@ import { Card, CardDescription, CardTitle } from '../components/ui/card'
 import { Progress } from '../components/ui/progress'
 import { useToast } from '../components/ui/toast'
 import { apiRequest, API_BASE } from '../lib/api'
+import { queryClient } from '../lib/query'
 import type {
   HealthResponse,
   WordLessonItem,
@@ -33,7 +34,7 @@ import type {
 import { cn } from '../lib/utils'
 
 const CAPTURE_FRAMES = 24
-const CAPTURE_INTERVAL_MS = 70 // ≈ 1.7 s total capture window
+const CAPTURE_INTERVAL_MS = 70 // approx. 1.7 s total capture window
 const CAPTURE_MAX_WIDTH = 480
 const CAPTURE_QUALITY = 0.7
 
@@ -42,6 +43,16 @@ type Mode = 'study' | 'practice'
 type SessionStats = {
   attempts: number
   correct: number
+}
+
+type AttemptRecord = {
+  expected_label: string | null
+  predicted_label: string
+  confidence: number
+  is_confident: boolean
+  is_correct: boolean | null
+  tracking_detected: boolean
+  valid_frame_ratio: number
 }
 
 export function WordLessonPage() {
@@ -69,18 +80,48 @@ export function WordLessonPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const captureCancelRef = useRef(false)
+  const sessionStartRef = useRef<number | null>(null)
+  const attemptLogRef = useRef<AttemptRecord[]>([])
+  const sessionSavingRef = useRef(false)
+  const previousModeRef = useRef<Mode>('study')
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const [lessonPayload, vocabPayload, healthPayload] = await Promise.all([
-          apiRequest<WordLessonResponse>('/api/learn/words'),
+        const lessonPayload = await apiRequest<WordLessonResponse>('/api/learn/words')
+        if (cancelled) return
+        setPayload(lessonPayload)
+
+        const [vocabResult, healthResult] = await Promise.allSettled([
           apiRequest<WordVocabularyResponse>('/api/word/vocabulary'),
           apiRequest<HealthResponse>('/api/health'),
         ])
         if (cancelled) return
-        setPayload(lessonPayload)
+
+        const vocabPayload =
+          vocabResult.status === 'fulfilled'
+            ? vocabResult.value
+            : {
+                labels: lessonPayload.items.map((item) => item.label),
+                sequence_length: CAPTURE_FRAMES,
+                feature_dim: 0,
+                ready: false,
+              }
+        const healthPayload =
+          healthResult.status === 'fulfilled'
+            ? healthResult.value
+            : {
+                status: 'degraded',
+                alphabet_model_ready: false,
+                image_model_ready: false,
+                landmark_model_ready: false,
+                word_model_ready: false,
+                word_labels: [],
+                labels: [],
+                oauth_providers: [],
+              }
+
         setVocabulary(vocabPayload)
         setHealth(healthPayload)
 
@@ -100,10 +141,24 @@ export function WordLessonPage() {
 
   useEffect(() => {
     return () => {
+      void persistSessionSnapshot()
       stopCamera()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (previousModeRef.current === 'practice' && mode !== 'practice') {
+      void persistSessionSnapshot()
+      stopCamera()
+    }
+    previousModeRef.current = mode
+  }, [mode])
+
+  useEffect(() => {
+    setResult(null)
+    setRequestError(null)
+  }, [targetWord])
 
   const reviewedSet = useMemo(() => new Set(reviewed), [reviewed])
   const lessonItems = payload?.items ?? []
@@ -145,6 +200,9 @@ export function WordLessonPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
+      }
+      if (sessionStartRef.current === null) {
+        sessionStartRef.current = Date.now()
       }
       setCameraActive(true)
     } catch (error) {
@@ -229,6 +287,17 @@ export function WordLessonPage() {
         }),
       })
       setResult(response)
+      const attemptRecord: AttemptRecord = {
+        expected_label: targetWord,
+        predicted_label: response.predicted_word,
+        confidence: response.confidence,
+        is_confident: response.is_confident,
+        is_correct: response.matches_target,
+        tracking_detected: response.tracking_detected,
+        valid_frame_ratio: response.valid_frame_ratio,
+      }
+      attemptLogRef.current = [...attemptLogRef.current, attemptRecord]
+      void persistAttempt(attemptRecord)
       setSessionStats((current) => ({
         attempts: current.attempts + 1,
         correct: current.correct + (response.matches_target ? 1 : 0),
@@ -269,12 +338,76 @@ export function WordLessonPage() {
     if (candidates.length === 0) return
     const next = candidates[Math.floor(Math.random() * candidates.length)] ?? candidates[0]
     setTargetWord(next ?? null)
-    setResult(null)
   }
 
   function resetSession() {
+    void persistSessionSnapshot()
     setSessionStats({ attempts: 0, correct: 0 })
     setResult(null)
+    attemptLogRef.current = []
+    sessionStartRef.current = Date.now()
+  }
+
+  async function persistAttempt(attempt: AttemptRecord) {
+    try {
+      await apiRequest('/api/learn/attempt', {
+        method: 'POST',
+        body: JSON.stringify({
+          track: 'words',
+          category: 'Word Studio',
+          expected_label: attempt.expected_label,
+          predicted_label: attempt.predicted_label,
+          confidence: attempt.confidence,
+          is_confident: attempt.is_confident,
+          is_correct: attempt.is_correct,
+          tracking_detected: attempt.tracking_detected,
+          valid_frame_ratio: attempt.valid_frame_ratio,
+        }),
+      })
+    } catch {
+      // Best-effort analytics tracking.
+    }
+  }
+
+  async function persistSessionSnapshot() {
+    if (sessionSavingRef.current) {
+      return
+    }
+    const attemptsSnapshot = attemptLogRef.current.slice()
+    if (attemptsSnapshot.length === 0) {
+      return
+    }
+
+    sessionSavingRef.current = true
+    const correctCount = attemptsSnapshot.filter((attempt) => attempt.is_correct).length
+    const startedAt = sessionStartRef.current ?? Date.now()
+    const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
+
+    try {
+      await apiRequest('/api/learn/session', {
+        method: 'POST',
+        body: JSON.stringify({
+          track: 'words',
+          category: 'Word Studio',
+          source_type: 'word-practice',
+          unit_title: 'Word Studio',
+          accuracy: attemptsSnapshot.length > 0 ? (correctCount / attemptsSnapshot.length) * 100 : 0,
+          completed_items: attemptsSnapshot.length,
+          correct_items: correctCount,
+          attempts_count: attemptsSnapshot.length,
+          duration_seconds: durationSeconds,
+          summary: `${correctCount}/${attemptsSnapshot.length} graded word attempts matched the target.`,
+        }),
+      })
+      attemptLogRef.current = []
+      sessionStartRef.current = Date.now()
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] })
+      await queryClient.invalidateQueries({ queryKey: ['progress-overview'] })
+    } catch {
+      // Best-effort analytics tracking.
+    } finally {
+      sessionSavingRef.current = false
+    }
   }
 
   return (
@@ -610,7 +743,7 @@ function PracticeMode(props: PracticeModeProps) {
             </div>
             <p className="text-sm text-on-surface-variant">
               {modelReady
-                ? `Model ready — ${vocabulary?.labels.length ?? 0} words trained`
+                ? `Model ready - ${vocabulary?.labels.length ?? 0} words trained`
                 : 'Word model is still warming up'}
             </p>
           </div>
@@ -643,7 +776,7 @@ function PracticeMode(props: PracticeModeProps) {
             <div className="absolute left-6 top-6 rounded-2xl border border-outline-variant/10 bg-[#31394d]/60 px-4 py-2 backdrop-blur-xl">
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Target word</p>
               <p className="mt-1 font-headline text-2xl font-black text-on-surface">
-                {targetWord ?? '—'}
+                {targetWord ?? '-'}
               </p>
             </div>
 
@@ -804,7 +937,7 @@ function PracticeMode(props: PracticeModeProps) {
             <div className="absolute bottom-5 left-5 right-5">
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Reference</p>
               <p className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white">
-                {targetWord ?? '—'}
+                {targetWord ?? '-'}
               </p>
               {targetLessonItem?.coach_tip && (
                 <p className="mt-2 text-sm text-white/80 line-clamp-2">{targetLessonItem.coach_tip}</p>
@@ -876,7 +1009,7 @@ function PracticeMode(props: PracticeModeProps) {
               <div className="space-y-2">
                 <Progress value={captureProgress} />
                 <p className="text-center text-xs text-on-surface-variant">
-                  Keep signing — the model uses the whole clip.
+                  Keep signing - the model uses the whole clip.
                 </p>
               </div>
             )}

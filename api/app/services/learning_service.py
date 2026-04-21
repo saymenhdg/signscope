@@ -16,6 +16,7 @@ from signlang.learning_content import (
     HAND_CONNECTIONS,
     PHRASE_DRILLS,
     alphabet_reference_image,
+    alphabet_reference_video,
     alphabet_sequence,
     build_alphabet_guides,
     build_word_lessons,
@@ -43,6 +44,7 @@ class LearningCatalogService:
                 motion_letter=bool(self.alphabet_guides[label]["motion_letter"]),
                 guide_points=[GuidePoint(**point) for point in self.alphabet_guides[label]["guide_points"]],
                 reference_image_path=(f"/api/learn/alphabet/reference/{label}" if alphabet_reference_image(label) is not None else None),
+                reference_video_path=(f"/api/learn/alphabet/reference-video/{label}" if alphabet_reference_video(label) is not None else None),
             )
             for label in labels
         ]
@@ -83,6 +85,9 @@ class LearningCatalogService:
 
     def alphabet_reference(self, label: str) -> Path | None:
         return alphabet_reference_image(label)
+
+    def alphabet_reference_video(self, label: str) -> Path | None:
+        return alphabet_reference_video(label)
 
     def word_reference(self, label: str) -> Path | None:
         return word_reference_video(label)

@@ -120,6 +120,33 @@ export type ProgressOverview = {
     description: string
     unlocked: boolean
   }>
+  track_breakdown: Array<{
+    track: string
+    label: string
+    sessions: number
+    attempts: number
+    correct: number
+    accuracy: number
+    percent: number
+  }>
+  focus_labels: Array<{
+    label: string
+    track: string
+    attempts: number
+    accuracy: number
+  }>
+  recent_sessions: Array<{
+    id: number
+    track: string
+    category: string
+    unit_title: string
+    accuracy: number
+    completed_items: number
+    correct_items: number
+    attempts_count: number
+    duration_minutes: number
+    completed_at: string
+  }>
 }
 
 export type TopPrediction = {
@@ -151,6 +178,7 @@ export type AlphabetLessonItem = {
   motion_letter: boolean
   guide_points: GuidePoint[]
   reference_image_path: string | null
+  reference_video_path: string | null
 }
 
 export type AlphabetLessonResponse = {
