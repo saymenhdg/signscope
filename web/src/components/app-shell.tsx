@@ -67,41 +67,34 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
           to="/app/profile"
           className={({ isActive }) =>
             cn(
-              'mb-8 rounded-3xl border border-outline-variant/20 bg-surface-container p-4 transition-colors hover:border-secondary/15 hover:bg-surface-container-high',
+              'mb-8 flex items-center gap-3.5 rounded-2xl border border-outline-variant/20 bg-surface-container px-4 py-3 transition-colors hover:border-secondary/15 hover:bg-surface-container-high',
               isActive && 'border-secondary/20 bg-surface-container-high',
             )
           }
         >
-          <div className="flex items-center gap-4">
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt={user.display_name}
-                className="size-12 rounded-2xl border border-outline-variant/20 object-cover"
-              />
-            ) : (
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 text-secondary">
-                <span className="font-headline text-lg font-black">
-                  {user?.display_name
-                    .split(' ')
-                    .map((part) => part[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase() ?? 'SS'}
-                </span>
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-headline text-sm font-bold text-on-surface">{user?.display_name}</p>
-              <p className="truncate text-xs text-secondary">{user?.email}</p>
+          {user?.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt={user.display_name}
+              className="size-10 rounded-xl border border-outline-variant/20 object-cover"
+            />
+          ) : (
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 text-secondary">
+              <span className="font-headline text-sm font-black">
+                {user?.display_name
+                  .split(' ')
+                  .map((part) => part[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase() ?? 'SS'}
+              </span>
             </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-                {user?.role ?? 'student'}
-              </p>
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">Edit</p>
-            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-on-surface">{user?.display_name}</p>
+            <p className="truncate text-xs text-on-surface-variant">{user?.role === 'teacher' ? 'Teacher' : 'Student'}</p>
           </div>
+          <Settings className="size-4 shrink-0 text-on-surface-variant/60" />
         </NavLink>
 
         <nav className="flex flex-1 flex-col gap-1">
@@ -177,9 +170,9 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
         {!hideHeader ? (
           <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-6">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {title ? <p className="font-headline text-2xl font-black tracking-tight text-primary sm:text-3xl">{title}</p> : null}
-                {subtitle ? <p className="mt-1 max-w-2xl text-sm text-on-surface-variant sm:text-base">{subtitle}</p> : null}
+                {subtitle ? <p className="mt-1 truncate text-sm text-on-surface-variant">{subtitle}</p> : null}
               </div>
               <div className="flex items-center gap-3">
                 <Tooltip content={theme === 'dark' ? 'Light mode' : 'Dark mode'}>

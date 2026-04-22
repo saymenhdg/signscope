@@ -1,86 +1,123 @@
 import {
   ArrowRight,
-  Bolt,
-  BookOpen,
+  BookOpenCheck,
+  CalendarDays,
   Camera,
-  Globe2,
+  ChartColumnBig,
+  GraduationCap,
+  Hand,
   Menu,
-  ShieldCheck,
+  MessageSquare,
   Sparkles,
-  UploadCloud,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { SectionReveal } from '../components/ui/section-reveal'
 import { Badge } from '../components/ui/badge'
 import { buttonVariants } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { useAuth } from '../lib/auth'
 import { cn } from '../lib/utils'
 
-const FEATURE_CARDS = [
+const STEPS = [
   {
-    title: 'Multilingual Bridge',
-    description: 'Translate sign input into spoken-language captions for live conversations and team demos.',
-    icon: Globe2,
+    step: '01',
+    title: 'Learn the signs',
+    description: 'Follow guided lessons through the ASL alphabet and core vocabulary with reference videos, handshape cues, and structured repetition.',
+    icon: BookOpenCheck,
+    color: 'primary' as const,
   },
   {
-    title: 'Bulk Upload',
-    description: 'Queue recorded clips, review transcripts, and build a reusable translation library.',
-    icon: UploadCloud,
+    step: '02',
+    title: 'Practice with your camera',
+    description: 'Sign in front of your webcam and get instant AI feedback. The model reads your hand in real time and confirms when you nail it.',
+    icon: Camera,
+    color: 'secondary' as const,
   },
   {
-    title: 'Learning Platform',
-    description: 'Practice letters with live validation, progress tracking, and targeted weak-area drills.',
-    icon: BookOpen,
+    step: '03',
+    title: 'Track your progress',
+    description: 'See your streaks, accuracy trends, and weak spots. Know exactly what to practice next instead of guessing.',
+    icon: ChartColumnBig,
+    color: 'tertiary' as const,
   },
+]
+
+const FEATURES = [
+  {
+    title: 'Alphabet Coach',
+    description: 'Swipeable cards with reference media, handshape guides, and a practice mode that auto-advances when the AI confirms your sign.',
+    icon: Hand,
+    badge: 'Core',
+  },
+  {
+    title: 'Live Recognition',
+    description: 'A dedicated camera workspace with real-time predictions, confidence scores, and stability gates so you know your sign is clean.',
+    icon: Camera,
+    badge: 'AI-powered',
+  },
+  {
+    title: 'Smart Progress',
+    description: 'Completion tracking, accuracy breakdowns, and personalized recommendations that turn scattered practice into a clear learning path.',
+    icon: ChartColumnBig,
+    badge: 'Analytics',
+  },
+]
+
+const TEACHER_FEATURES = [
+  { title: 'Dashboard', description: 'See bookings, student activity, and teaching readiness at a glance.', icon: GraduationCap },
+  { title: 'Schedule', description: 'Manage lesson requests and keep your availability visible to students.', icon: CalendarDays },
+  { title: 'Messages', description: 'Communicate with students directly inside the platform.', icon: MessageSquare },
 ]
 
 export function LandingPage() {
   const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const primaryCta = user ? '/app/dashboard' : '/register'
+  const primaryLabel = user ? 'Open Dashboard' : 'Start Learning Free'
+  const secondaryCta = user?.role === 'teacher' ? '/app/teacher' : user ? '/app/learn' : '/teacher/register'
+  const secondaryLabel = user?.role === 'teacher' ? 'Teacher Workspace' : user ? 'Learning Hub' : 'Join as Teacher'
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-on-background">
-      <div className="pointer-events-none absolute -left-28 top-0 size-96 rounded-full bg-primary/10 blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 size-[34rem] rounded-full bg-secondary/8 blur-[160px]" />
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-20 top-0 size-[26rem] rounded-full bg-primary/14 blur-[140px]" />
+        <div className="absolute right-[-8rem] top-24 size-[24rem] rounded-full bg-secondary/12 blur-[150px]" />
+      </div>
 
-      <header className="sticky top-0 z-40 border-b border-outline-variant/25 bg-background/88 px-5 py-4 backdrop-blur-xl sm:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-container text-background shadow-lg shadow-primary/10">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-40 px-4 py-4 sm:px-8">
+        <div className="ui-panel-soft mx-auto flex max-w-7xl items-center justify-between gap-4 rounded-[28px] px-4 py-3 sm:px-5">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--primary)_0%,var(--primary-container)_62%,var(--secondary)_150%)] text-[#06111d] shadow-[0_18px_42px_rgba(109,127,240,0.24)]">
               <Sparkles className="size-5" />
             </div>
-            <div>
-              <p className="font-headline text-2xl font-black tracking-tight text-primary">SignSpeak AI</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Translate the world silently</p>
-            </div>
-          </div>
+            <span className="font-headline text-xl font-black tracking-tight text-on-surface sm:text-2xl">
+              SignSpeak AI
+            </span>
+          </Link>
 
           <nav className="hidden items-center gap-2 md:flex">
-            <Link to="/" className={buttonVariants({ variant: 'ghost' })}>
-              Home
-            </Link>
+            <a href="#how-it-works" className={buttonVariants({ variant: 'ghost' })}>How It Works</a>
+            <a href="#features" className={buttonVariants({ variant: 'ghost' })}>Features</a>
+            <a href="#teachers" className={buttonVariants({ variant: 'ghost' })}>Teachers</a>
             {user ? (
-              <Link to="/app/dashboard" className={buttonVariants()}>
-                Open Workspace
-              </Link>
+              <Link to="/app/dashboard" className={buttonVariants()}>Open Workspace</Link>
             ) : (
               <>
-                <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>
-                  Sign In
-                </Link>
-                <Link to="/register" className={buttonVariants()}>
-                  Register
-                </Link>
+                <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>Sign In</Link>
+                <Link to="/register" className={buttonVariants()}>Get Started</Link>
               </>
             )}
           </nav>
 
           <button
             type="button"
-            className="flex size-10 items-center justify-center rounded-xl border border-outline-variant/25 bg-surface-container text-on-surface-variant md:hidden"
+            className="ui-panel-soft flex size-10 items-center justify-center rounded-2xl text-on-surface-variant md:hidden"
             onClick={() => setMobileMenuOpen((v) => !v)}
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
@@ -89,137 +126,256 @@ export function LandingPage() {
         </div>
 
         {mobileMenuOpen && (
-          <nav className="mt-4 flex flex-col gap-2 border-t border-outline-variant/20 pt-4 md:hidden">
-            {user ? (
-              <Link to="/app/dashboard" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>
-                Open Workspace
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className={buttonVariants({ variant: 'secondary' })} onClick={() => setMobileMenuOpen(false)}>
-                  Sign In
-                </Link>
-                <Link to="/register" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>
-                  Register
-                </Link>
-              </>
-            )}
-          </nav>
+          <div className="mx-auto mt-3 max-w-7xl md:hidden">
+            <div className="ui-panel rounded-[26px] p-3">
+              <div className="grid gap-2">
+                <a href="#how-it-works" className={buttonVariants({ variant: 'ghost' })} onClick={() => setMobileMenuOpen(false)}>How It Works</a>
+                <a href="#features" className={buttonVariants({ variant: 'ghost' })} onClick={() => setMobileMenuOpen(false)}>Features</a>
+                <a href="#teachers" className={buttonVariants({ variant: 'ghost' })} onClick={() => setMobileMenuOpen(false)}>Teachers</a>
+                {user ? (
+                  <Link to="/app/dashboard" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>Open Workspace</Link>
+                ) : (
+                  <>
+                    <Link to="/login" className={buttonVariants({ variant: 'secondary' })} onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+                    <Link to="/register" className={buttonVariants()} onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </header>
 
-      <main className="relative mx-auto grid max-w-7xl gap-16 px-5 pb-24 pt-12 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <section className="space-y-8">
-          <Badge className="border-secondary/15 bg-secondary/10 text-secondary">Powered by neural gesture recognition</Badge>
-          <div className="space-y-5">
-            <h1 className="font-headline text-5xl font-extrabold leading-[1.02] tracking-tight text-on-surface sm:text-6xl lg:text-7xl">
-              Translate the World <span className="bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent">Silently.</span>
-            </h1>
-            <p className="max-w-2xl text-lg leading-8 text-on-surface-variant sm:text-xl">
-              Real-time sign language recognition for webcam, video, and alphabet learning. Authenticate once,
-              enter your workspace, and move between live practice, translation history, upload review, and progress analytics.
+      <main className="relative mx-auto flex max-w-7xl flex-col gap-24 px-4 pb-32 pt-12 sm:px-8 sm:pt-20">
+        {/* ── Hero ── */}
+        <SectionReveal className="flex flex-col items-center text-center">
+          <Badge className="border-secondary/10 bg-secondary/10 text-secondary">
+            AI-powered sign language learning
+          </Badge>
+
+          <h1 className="mt-6 max-w-4xl font-headline text-5xl font-extrabold leading-[1.02] tracking-tight text-on-surface sm:text-6xl lg:text-7xl">
+            Sign language is a superpower.
+            <span className="mt-2 block bg-[linear-gradient(135deg,var(--primary),var(--secondary))] bg-clip-text text-transparent">
+              Start learning it today.
+            </span>
+          </h1>
+
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-on-surface-variant sm:text-xl">
+            Practice ASL with guided lessons, get real-time AI feedback through your webcam,
+            and track your progress — all in one place.
+          </p>
+
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+            <Link to={primaryCta} className={cn(buttonVariants({ size: 'lg' }), 'min-w-52')}>
+              {primaryLabel}
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link to={secondaryCta} className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'min-w-52')}>
+              <GraduationCap className="size-4" />
+              {secondaryLabel}
+            </Link>
+          </div>
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm text-on-surface-variant">
+            <span className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-secondary" />
+              Free to start
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-secondary" />
+              No downloads required
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-secondary" />
+              Works in your browser
+            </span>
+          </div>
+        </SectionReveal>
+
+        {/* ── How It Works ── */}
+        <SectionReveal delay={0.06} id="how-it-works" className="flex flex-col items-center gap-12">
+          <div className="text-center">
+            <Badge className="border-primary/10 bg-primary/10 text-primary">How it works</Badge>
+            <h2 className="mt-5 font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+              Three steps. One learning loop.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-on-surface-variant">
+              SignSpeak AI is built around a simple cycle: learn the sign, practice it live, and see what to improve.
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <Link
-              to={user ? '/app/live' : '/register'}
-              className={cn(buttonVariants({ size: 'lg' }), 'min-w-48')}
-            >
-              {user ? 'Start Translating' : 'Create Account'}
-              <ArrowRight className="size-4" />
-            </Link>
-            <Link
-              to={user ? '/app/learn' : '/login'}
-              className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'min-w-48')}
-            >
-              <BookOpen className="size-4" />
-              {user ? 'Open Learning Hub' : 'Sign In'}
-            </Link>
+          <div className="grid w-full gap-6 lg:grid-cols-3">
+            {STEPS.map((item, i) => (
+              <StepCard key={item.step} {...item} isLast={i === STEPS.length - 1} />
+            ))}
+          </div>
+        </SectionReveal>
+
+        {/* ── Features ── */}
+        <SectionReveal delay={0.1} id="features" className="flex flex-col items-center gap-12">
+          <div className="text-center">
+            <Badge className="border-secondary/10 bg-secondary/10 text-secondary">Features</Badge>
+            <h2 className="mt-5 font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+              Everything you need to learn ASL
+            </h2>
           </div>
 
-          <div className="grid gap-4 border-t border-outline-variant/15 pt-8 sm:grid-cols-3">
-            <TrustItem icon={Bolt} label="Real-time AI" />
-            <TrustItem icon={ShieldCheck} label="Secure sessions" />
-            <TrustItem icon={BookOpen} label="Inclusive learning" />
+          <div className="grid w-full gap-6 md:grid-cols-3">
+            {FEATURES.map((item) => (
+              <FeatureCard key={item.title} {...item} />
+            ))}
           </div>
-        </section>
+        </SectionReveal>
 
-        <section className="relative">
-          <Card className="overflow-hidden border-outline-variant/15 bg-surface-container-low/90 p-0">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[30px]">
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(189,194,255,0.18),transparent_48%),radial-gradient(circle_at_20%_30%,rgba(68,226,205,0.18),transparent_28%),linear-gradient(180deg,#1a2237_0%,#0b1326_100%)]" />
-              <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(68,226,205,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(68,226,205,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-              <div className="absolute left-6 top-6 rounded-full border border-secondary/15 bg-[#2d3449]/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-secondary backdrop-blur-xl">
-                Live analysis
-              </div>
-
-              <div className="absolute inset-x-6 bottom-6 rounded-[26px] border border-white/5 bg-[#2d3449]/45 p-6 shadow-2xl backdrop-blur-2xl">
-                <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.24em] text-secondary">
-                  <span>Transcription</span>
-                  <span className="text-on-surface-variant">Confidence: 98.4%</span>
-                </div>
-                <div className="mb-4 h-px bg-white/10" />
-                <p className="text-2xl font-medium italic text-white">
-                  “Hello, it is wonderful to meet you today. How can I assist you with your project?”
+        {/* ── Teachers ── */}
+        <SectionReveal delay={0.14} id="teachers">
+          <Card className="relative overflow-hidden rounded-[36px] p-8 sm:p-12">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_16%,rgba(75,225,199,0.10),transparent_24%),radial-gradient(circle_at_12%_80%,rgba(142,162,255,0.10),transparent_24%)]" />
+            <div className="relative grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+              <div>
+                <Badge className="border-secondary/10 bg-secondary/10 text-secondary">For teachers</Badge>
+                <h2 className="mt-5 font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+                  Teach sign language on your terms
+                </h2>
+                <p className="mt-5 text-base leading-8 text-on-surface-variant">
+                  Set up your public profile, manage lesson requests, and communicate with students —
+                  all through a dedicated teacher workspace.
                 </p>
-                <div className="mt-5 flex items-center gap-4">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-container-highest">
-                    <div className="h-full w-2/3 rounded-full bg-secondary" />
-                  </div>
-                  <Camera className="size-4 text-secondary" />
-                </div>
+                <Link
+                  to={user?.role === 'teacher' ? '/app/teacher' : '/teacher/register'}
+                  className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'mt-8')}
+                >
+                  <GraduationCap className="size-4" />
+                  {user?.role === 'teacher' ? 'Open Teacher Workspace' : 'Join as a Teacher'}
+                </Link>
               </div>
 
-              <div className="absolute right-[-1.25rem] top-1/2 hidden rounded-[24px] border border-white/5 bg-[#2d3449]/55 p-4 shadow-xl backdrop-blur-2xl md:block">
-                <div className="flex h-12 items-end gap-1">
-                  <span className="w-1.5 rounded-full bg-secondary" style={{ height: '25%' }} />
-                  <span className="w-1.5 rounded-full bg-secondary" style={{ height: '82%' }} />
-                  <span className="w-1.5 rounded-full bg-secondary" style={{ height: '45%' }} />
-                  <span className="w-1.5 rounded-full bg-secondary" style={{ height: '70%' }} />
-                  <span className="w-1.5 rounded-full bg-secondary" style={{ height: '32%' }} />
-                </div>
+              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+                {TEACHER_FEATURES.map((item) => (
+                  <TeacherFeature key={item.title} {...item} />
+                ))}
               </div>
             </div>
           </Card>
-        </section>
+        </SectionReveal>
 
-        <section className="lg:col-span-2">
-          <div className="grid gap-6 md:grid-cols-3">
-            {FEATURE_CARDS.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <Card
-                  key={feature.title}
-                  className="h-full rounded-[30px] border-outline-variant/12 bg-surface-container-low/90 p-7 transition-all hover:border-primary/20 hover:bg-surface-container"
-                >
-                  <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </div>
-                  <h2 className="font-headline text-2xl font-bold text-on-surface">{feature.title}</h2>
-                  <p className="mt-3 text-sm leading-7 text-on-surface-variant">{feature.description}</p>
-                </Card>
-              )
-            })}
+        {/* ── Final CTA ── */}
+        <SectionReveal delay={0.18}>
+          <div className="flex flex-col items-center gap-8 text-center">
+            <h2 className="max-w-3xl font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+              Ready to start signing?
+            </h2>
+            <p className="max-w-xl text-base leading-8 text-on-surface-variant">
+              Join SignSpeak AI and start learning American Sign Language with real-time AI feedback — right from your browser.
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <Link to={primaryCta} className={cn(buttonVariants({ size: 'lg' }), 'min-w-52')}>
+                {primaryLabel}
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link to={secondaryCta} className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'min-w-52')}>
+                {secondaryLabel}
+              </Link>
+            </div>
           </div>
-        </section>
+        </SectionReveal>
       </main>
+
+      {/* ── Footer ── */}
+      <footer className="border-t border-outline-variant/12 py-8 text-center text-sm text-on-surface-variant">
+        <p>&copy; {new Date().getFullYear()} SignSpeak AI. Built for the deaf and hard-of-hearing community.</p>
+      </footer>
     </div>
   )
 }
 
-type TrustItemProps = {
-  icon: typeof Bolt
-  label: string
+function StepCard({
+  step,
+  title,
+  description,
+  icon: Icon,
+  color,
+  isLast,
+}: {
+  step: string
+  title: string
+  description: string
+  icon: LucideIcon
+  color: 'primary' | 'secondary' | 'tertiary'
+  isLast: boolean
+}) {
+  const colorMap = {
+    primary: { bg: 'bg-primary/10', text: 'text-primary', dot: 'bg-primary' },
+    secondary: { bg: 'bg-secondary/10', text: 'text-secondary', dot: 'bg-secondary' },
+    tertiary: { bg: 'bg-tertiary/10', text: 'text-tertiary', dot: 'bg-tertiary' },
+  }
+  const c = colorMap[color]
+
+  return (
+    <Card className="relative flex h-full flex-col rounded-[32px] p-7">
+      <div className="flex items-center gap-4">
+        <div className={cn('flex size-12 items-center justify-center rounded-2xl', c.bg, c.text)}>
+          <Icon className="size-5" />
+        </div>
+        <span className={cn('font-headline text-sm font-bold uppercase tracking-[0.2em]', c.text)}>
+          {step}
+        </span>
+      </div>
+      <h3 className="mt-5 font-headline text-2xl font-bold text-on-surface">{title}</h3>
+      <p className="mt-3 flex-1 text-sm leading-7 text-on-surface-variant">{description}</p>
+
+      {!isLast && (
+        <div className="absolute -right-3 top-1/2 z-10 hidden size-6 -translate-y-1/2 items-center justify-center lg:flex">
+          <ArrowRight className={cn('size-4', c.text)} />
+        </div>
+      )}
+    </Card>
+  )
 }
 
-function TrustItem({ icon: Icon, label }: TrustItemProps) {
+function FeatureCard({
+  title,
+  description,
+  icon: Icon,
+  badge,
+}: {
+  title: string
+  description: string
+  icon: LucideIcon
+  badge: string
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-10 items-center justify-center rounded-xl bg-surface-container text-secondary">
-        <Icon className="size-4" />
+    <Card className="ui-panel-interactive flex h-full flex-col rounded-[32px] p-7">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Icon className="size-5" />
+        </div>
+        <Badge className="border-outline-variant/15 text-on-surface-variant">{badge}</Badge>
       </div>
-      <span className="text-sm font-medium text-on-surface-variant">{label}</span>
+      <h3 className="mt-6 font-headline text-2xl font-bold text-on-surface">{title}</h3>
+      <p className="mt-3 flex-1 text-sm leading-7 text-on-surface-variant">{description}</p>
+    </Card>
+  )
+}
+
+function TeacherFeature({
+  title,
+  description,
+  icon: Icon,
+}: {
+  title: string
+  description: string
+  icon: LucideIcon
+}) {
+  return (
+    <div className="ui-panel-soft flex items-start gap-4 rounded-[22px] p-5">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+        <Icon className="size-5" />
+      </div>
+      <div>
+        <p className="font-semibold text-on-surface">{title}</p>
+        <p className="mt-1 text-sm leading-7 text-on-surface-variant">{description}</p>
+      </div>
     </div>
   )
 }

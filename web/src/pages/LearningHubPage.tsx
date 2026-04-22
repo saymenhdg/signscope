@@ -61,7 +61,7 @@ export function LearningHubPage() {
   return (
     <AppShell
       title="Learning Hub"
-      subtitle="Move between a live alphabet coach and a reference-backed word library. The alphabet track confirms signs in real time and advances automatically when the model is satisfied."
+      subtitle="Practice the ASL alphabet with live camera coaching, or study core vocabulary with video references."
     >
       <LearnSubnav className="mb-6" />
 
@@ -90,9 +90,9 @@ export function LearningHubPage() {
             Learn letters and words with the camera guiding the session.
           </h2>
           <p className="mt-5 max-w-3xl text-base leading-8 text-on-surface-variant">
-            The alphabet coach uses a transparent landmark guide over your live camera. Match the handshape,
-            hold steady, and the system moves to the next character after the CNN confirms it. The word track
-            now uses the linked word video library so Study and Practice work from the same reference set.
+            The alphabet coach shows a hand guide over your live camera. Match the shape,
+            hold steady, and the lesson automatically moves to the next letter once you've got it right.
+            The word track includes video references so you can study and practice from the same examples.
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -125,12 +125,12 @@ export function LearningHubPage() {
             <FocusRow
               icon={Camera}
               title="Live Test"
-              detail="Run a focused camera-based check and see whether you can hold the target letter under the model gate."
+              detail="Test yourself by holding a target letter steady until the AI confirms your sign."
             />
             <FocusRow
               icon={BrainCircuit}
               title="Progress Loop"
-              detail="Completed alphabet sessions are saved back into the FastAPI account data."
+              detail="Review your accuracy, streaks, and areas to improve after each session."
             />
           </div>
         </Card>
@@ -139,7 +139,7 @@ export function LearningHubPage() {
       <section className="mt-8 grid gap-8 xl:grid-cols-3">
         <TrackCard
           title="Alphabet Coach"
-          description="Launch the live camera tutor, line your hand up with the transparent guide, and let the model advance letter by letter."
+          description="Follow the hand guide on screen, sign each letter, and advance automatically when the AI confirms you've got it."
           detail="Camera confirmed"
           cta="Open alphabet coach"
           href="/app/learn/alphabet"
@@ -183,7 +183,7 @@ export function LearningHubPage() {
 
           <div className="mt-8 space-y-4">
             <GuideBullet title="Transparent guide overlay" detail="A canonical hand skeleton stays on top of the live video so the learner can physically line up the pose." />
-            <GuideBullet title="Stable hold gate" detail="The model waits for a reliable run of predictions before it counts a letter as complete." />
+            <GuideBullet title="Stable hold check" detail="You need to hold the sign steady for a few moments before it counts — no quick flashes." />
             <GuideBullet title="Automatic progression" detail="Once the target is confirmed, the session moves to the next character without extra clicks." />
           </div>
         </Card>

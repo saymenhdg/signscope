@@ -389,7 +389,7 @@ export function AlphabetLessonPage() {
   const liveGuess = deferredResult?.is_confident ? deferredResult.predicted_letter : '...'
 
   return (
-    <AppShell title="Alphabet Coach" subtitle="Study the alphabet first, then switch to practice and let the guided camera flow confirm each letter live.">
+    <AppShell title="Alphabet Coach" subtitle="Study each letter, then practice with your camera — the AI confirms when you've got it right.">
       <LearnSubnav className="mb-6" />
       {requestError && mode === 'study' ? (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">{requestError}</div>
@@ -413,7 +413,7 @@ export function AlphabetLessonPage() {
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (next: Mode) => void }) {
   const items = [
     { id: 'study' as const, label: 'Study', description: 'Review the cue, reference clip, and guide', icon: BookOpenCheck },
-    { id: 'practice' as const, label: 'Practice', description: 'Open the camera and let the model confirm letters', icon: Camera },
+    { id: 'practice' as const, label: 'Practice', description: 'Open the camera and get live feedback on your signs', icon: Camera },
   ]
   return (
     <div className="mb-8 grid gap-3 rounded-[28px] border border-outline-variant/15 bg-surface-container-low/90 p-3 shadow-sm sm:grid-cols-2">
@@ -667,7 +667,7 @@ function StudyMode({
               <div className="space-y-4">
                 <CoachStep title="Front side first" detail="Look at the sign reference and form the handshape before you check the guide." />
                 <CoachStep title="Guide second" detail="Use the guide panel only to correct finger spread, thumb placement, and palm angle." />
-                <CoachStep title="Then practice" detail="Once a letter feels stable here, switch to Practice and let the live model confirm it." />
+                <CoachStep title="Then practice" detail="Once a letter feels comfortable, switch to Practice and test it with the camera." />
               </div>
             </Card>
           </div>
@@ -741,7 +741,7 @@ function PracticeMode({
               <span className={cn('size-2.5 rounded-full', cameraActive ? 'bg-secondary animate-pulse' : 'bg-outline')} />
               <span className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">{cameraActive ? 'Camera Active' : 'Camera Offline'}</span>
             </div>
-            <p className="text-sm text-on-surface-variant">{health?.alphabet_model_ready ? 'Alphabet model ready for guided practice' : 'Alphabet model is still warming up'}</p>
+            <p className="text-sm text-on-surface-variant">{health?.alphabet_model_ready ? 'Ready for guided practice' : 'Getting ready...'}</p>
           </div>
           <div className="flex items-center gap-3">
             {cameraActive ? (

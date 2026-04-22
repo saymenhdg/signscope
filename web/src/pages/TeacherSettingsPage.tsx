@@ -230,7 +230,7 @@ export function TeacherSettingsPage() {
 
           <Card className="rounded-3xl p-8">
             <CardTitle>Profile Details</CardTitle>
-            <CardDescription className="mt-2">Basic account fields and the public bio shared across your teacher workspace.</CardDescription>
+            <CardDescription className="mt-2">Your name, bio, and details visible to students on your public profile.</CardDescription>
 
             <div className="mt-8 grid gap-5">
               <Field label="Display name">

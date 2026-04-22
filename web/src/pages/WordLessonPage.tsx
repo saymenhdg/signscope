@@ -261,7 +261,7 @@ export function WordLessonPage() {
     if (!cameraActive || !targetWord) return
     if (!health?.word_model_ready) {
       toast({
-        title: 'Word model is still loading',
+        title: 'Still getting ready',
         description: 'Try again in a few seconds.',
         variant: 'error',
       })
@@ -428,7 +428,7 @@ export function WordLessonPage() {
   return (
     <AppShell
       title="Word Studio"
-      subtitle="Study reference clips, then switch to live practice. The backend runs MediaPipe and our trained word recognizer on the frames you capture."
+      subtitle="Watch reference videos to learn each sign, then switch to live camera practice to test yourself."
     >
       <LearnSubnav className="mb-6" />
 
@@ -581,11 +581,11 @@ function StudyMode({
         <Card className="rounded-[34px] border-outline-variant/12 bg-[linear-gradient(160deg,rgba(68,226,205,0.12),rgba(11,19,38,0.94)_55%),linear-gradient(180deg,#131b2e_0%,#091122_100%)] p-8">
           <Badge className="border-secondary/10 bg-secondary/10 text-secondary">Core vocabulary</Badge>
           <h2 className="mt-5 font-headline text-4xl font-extrabold tracking-tight text-on-surface">
-            Build a reference-backed word set the live model can actually grade.
+            Learn core words with video references and live practice.
           </h2>
           <p className="mt-5 text-base leading-8 text-on-surface-variant">
-            These words come from the trained checkpoint labels that also have linked local reference videos.
-            Loop the clip, rehearse in a mirror, and then flip to Practice to grade yourself against the recognizer.
+            Each word includes a reference video you can loop and study.
+            Watch the clip, practice on your own, then switch to Practice mode to test yourself with the camera.
           </p>
 
           <div className="mt-10 space-y-3">
@@ -761,8 +761,8 @@ function PracticeMode(props: PracticeModeProps) {
             </div>
             <p className="text-sm text-on-surface-variant">
               {modelReady
-                ? `Model ready - ${vocabulary?.labels.length ?? 0} words trained`
-                : 'Word model is still warming up'}
+                ? `Ready — ${vocabulary?.labels.length ?? 0} words available`
+                : 'Getting ready...'}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -1028,7 +1028,7 @@ function PracticeMode(props: PracticeModeProps) {
               <div className="space-y-2">
                 <Progress value={captureProgress} />
                 <p className="text-center text-xs text-on-surface-variant">
-                  Keep signing - the model uses the whole clip.
+                  Keep signing — hold the gesture through the full recording.
                 </p>
               </div>
             )}

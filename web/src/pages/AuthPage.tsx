@@ -112,40 +112,40 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   }
 
   function subtitle() {
-    if (isTeacherAudience && isRegister) return 'Create your teacher access.'
-    if (isTeacherAudience) return 'Enter the teaching workspace.'
-    if (isRegister) return 'Start your workspace setup.'
-    if (isForgot) return 'Generate a reset link for your account.'
-    if (isReset) return 'Set a new password for your account.'
+    if (isTeacherAudience && isRegister) return 'Set up your teaching profile.'
+    if (isTeacherAudience) return 'Access your teaching dashboard.'
+    if (isRegister) return 'Create your free account.'
+    if (isForgot) return "We'll help you get back in."
+    if (isReset) return 'Choose a new password.'
     return 'Continue where you left off.'
   }
 
   function heroTitle() {
-    if (isTeacherAudience && isRegister) return 'Create your teacher portal.'
-    if (isTeacherAudience) return 'Manage lessons from one teacher workspace.'
-    if (isRegister) return 'Create your translation workspace.'
-    if (isForgot) return 'Recover access to your workspace.'
+    if (isTeacherAudience && isRegister) return 'Start teaching sign language.'
+    if (isTeacherAudience) return 'Welcome back, teacher.'
+    if (isRegister) return 'Start your sign language journey.'
+    if (isForgot) return 'Forgot your password?'
     if (isReset) return 'Set a new password and continue.'
-    return 'Welcome back to your sign lab.'
+    return 'Welcome back.'
   }
 
   function heroText() {
     if (isTeacherAudience && isRegister) {
-      return 'Register as a teacher to manage lesson availability, prepare your profile, and move into the booking workflow as it comes online.'
+      return 'Create your teacher account to set up your profile, manage lesson availability, and connect with students learning sign language.'
     }
     if (isTeacherAudience) {
-      return 'Sign in as a teacher to manage your teaching profile, review readiness, and move into the lesson scheduling workflow.'
+      return 'Sign in to manage your teaching profile, schedule lessons, and communicate with your students.'
     }
     if (isRegister) {
-      return 'Register once to unlock live translation, lesson tracking, upload review, and progress analytics inside one workspace.'
+      return 'Create a free account to access guided lessons, practice with live camera recognition, and track your sign language progress.'
     }
     if (isForgot) {
-      return 'Request a password reset link for your account. In local development, the app shows the reset URL directly because outbound email is not configured.'
+      return "Enter your email address and we'll send you a link to reset your password."
     }
     if (isReset) {
-      return 'Choose a strong new password, then sign back in to continue training, reviewing, and tracking progress.'
+      return 'Choose a strong new password, then sign back in to continue learning.'
     }
-    return 'Sign in to continue training your alphabet model, review recent translations, and monitor learning progress.'
+    return 'Sign in to continue your lessons, practice with the camera, and track your progress.'
   }
 
   return (
@@ -161,7 +161,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
               </div>
               <div>
                 <p className="font-headline text-2xl font-black tracking-tight text-primary">SignSpeak AI</p>
-                <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Secure workspace access</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Sign language learning platform</p>
               </div>
             </div>
 
@@ -171,11 +171,11 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
             </div>
 
             <div className="grid gap-4 rounded-[30px] border border-outline-variant/20 bg-surface-container-low/70 p-6 backdrop-blur-xl">
-              <div className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Inside your account</div>
+              <div className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">What you'll get</div>
               <div className="grid gap-4">
-                <FeaturePoint label="FastAPI + PostgreSQL session-backed workspace state" />
-                <FeaturePoint label="Dashboard, upload queue, learning coach, and progress analytics in one place" />
-                <FeaturePoint label="Email/password plus Google and GitHub sign-in when provider keys are configured" />
+                <FeaturePoint label="Your learning progress saved securely across sessions" />
+                <FeaturePoint label="Guided lessons, live camera practice, and progress tracking in one place" />
+                <FeaturePoint label="Sign in with email, or use your Google or GitHub account" />
               </div>
             </div>
           </div>
@@ -310,7 +310,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
                         ? 'Create Teacher Account'
                         : 'Create Account'
                       : isForgot
-                        ? 'Generate Reset Link'
+                        ? 'Send Reset Link'
                         : isReset
                           ? 'Update Password'
                           : isTeacherAudience

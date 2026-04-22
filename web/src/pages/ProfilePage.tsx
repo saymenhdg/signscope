@@ -1,9 +1,11 @@
-import { CalendarDays, Camera, LoaderCircle, Mail, Save, UserCircle2 } from 'lucide-react'
+import { CalendarDays, Camera, ImagePlus, LoaderCircle, Mail, Pencil, Save, UserCircle2 } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { AppShell } from '../components/app-shell'
+import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardDescription, CardTitle } from '../components/ui/card'
+import { Progress } from '../components/ui/progress'
 import { useToast } from '../components/ui/toast'
 import { apiRequest } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -55,6 +57,8 @@ export function ProfilePage() {
     }
     return new Date(user.created_at).toLocaleDateString()
   }, [user?.created_at])
+
+  const completeness = computeCompleteness({ displayName, age, bio, avatarSrc })
 
   async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -112,7 +116,7 @@ export function ProfilePage() {
   return (
     <AppShell
       title="Profile"
-      subtitle="Edit your account details, set your age, and upload a profile image for the workspace."
+      subtitle="Manage your account and personalize your learning experience."
     >
       {error ? (
         <div className="mb-6 rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
@@ -120,85 +124,143 @@ export function ProfilePage() {
         </div>
       ) : null}
 
-      <div className="grid gap-8 xl:grid-cols-[0.72fr_1.28fr]">
-        <Card className="rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-8">
-          <div className="flex flex-col items-center text-center">
-            {avatarSrc ? (
-              <img
-                src={avatarSrc}
-                alt={user?.display_name ?? 'Profile avatar'}
-                className="size-36 rounded-[30px] border border-outline-variant/15 object-cover shadow-lg"
-              />
-            ) : (
-              <div className="flex size-36 items-center justify-center rounded-[30px] border border-outline-variant/15 bg-surface-container text-secondary shadow-lg">
-                <UserCircle2 className="size-16" />
+      <div className="space-y-8">
+        {/* ── Profile Hero ── */}
+        <Card className="relative overflow-hidden rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-0">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(142,162,255,0.14),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(68,226,205,0.10),transparent_35%)]" />
+
+          <div className="relative px-8 pb-8 pt-10 sm:px-10">
+            <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start">
+              {/* Avatar with upload overlay */}
+              <div className="group relative shrink-0">
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt={user?.display_name ?? 'Profile avatar'}
+                    className="size-28 rounded-[26px] border-2 border-outline-variant/15 object-cover shadow-lg sm:size-32"
+                  />
+                ) : (
+                  <div className="flex size-28 items-center justify-center rounded-[26px] border-2 border-outline-variant/15 bg-surface-container text-secondary shadow-lg sm:size-32">
+                    <UserCircle2 className="size-14" />
+                  </div>
+                )}
+                <label className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-[26px] bg-black/0 transition-colors group-hover:bg-black/40">
+                  <Camera className="size-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      setSelectedAvatar(event.target.files?.[0] ?? null)
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Identity + stats */}
+              <div className="flex flex-1 flex-col items-center gap-6 sm:items-start">
+                <div className="text-center sm:text-left">
+                  <p className="font-headline text-3xl font-black text-on-surface sm:text-4xl">
+                    {user?.display_name}
+                  </p>
+                  <p className="mt-1.5 text-sm text-on-surface-variant">{user?.email}</p>
+                  {user?.bio && (
+                    <p className="mt-3 max-w-lg text-sm leading-7 text-on-surface-variant">{user.bio}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge className="border-outline-variant/15 gap-2">
+                    <Mail className="size-3" />
+                    Verified
+                  </Badge>
+                  <Badge className="border-outline-variant/15 gap-2">
+                    <CalendarDays className="size-3" />
+                    Joined {joinedLabel}
+                  </Badge>
+                  {user?.age && (
+                    <Badge className="border-outline-variant/15 gap-2">
+                      {user.age} years old
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Completeness ring */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative flex size-20 items-center justify-center rounded-full border-[6px] border-surface-container-highest">
+                  <div
+                    className="absolute inset-0 rounded-full transition-all duration-700"
+                    style={{
+                      background: `conic-gradient(var(--secondary) 0deg ${completeness * 3.6}deg, transparent 0deg)`,
+                      WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), black 0)',
+                      mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), black 0)',
+                    }}
+                  />
+                  <span className="font-headline text-lg font-black text-on-surface">{completeness}%</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Complete</span>
+              </div>
+            </div>
+
+            {/* Avatar upload action (only visible when a file is selected) */}
+            {selectedAvatar && (
+              <div className="mt-6 flex items-center gap-4 rounded-[22px] border border-secondary/15 bg-secondary/5 px-5 py-3">
+                <ImagePlus className="size-5 shrink-0 text-secondary" />
+                <p className="flex-1 truncate text-sm text-on-surface-variant">
+                  {selectedAvatar.name}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={handleAvatarUpload}
+                  disabled={isUploadingAvatar}
+                >
+                  {isUploadingAvatar ? <LoaderCircle className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+                  {isUploadingAvatar ? 'Uploading…' : 'Upload'}
+                </Button>
               </div>
             )}
-
-            <p className="mt-6 font-headline text-3xl font-black text-on-surface">{user?.display_name}</p>
-            <p className="mt-2 text-sm text-on-surface-variant">{user?.email}</p>
-          </div>
-
-          <div className="mt-8 space-y-4">
-            <ProfileFact icon={Mail} label="Email" value={user?.email ?? '...'} />
-            <ProfileFact icon={CalendarDays} label="Joined" value={joinedLabel} />
-            <ProfileFact icon={UserCircle2} label="Age" value={user?.age ? String(user.age) : 'Not set'} />
-          </div>
-
-          <div className="mt-8 rounded-[26px] border border-outline-variant/10 bg-surface-container p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-secondary">Profile image</p>
-            <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-              Upload a JPG, PNG, or WEBP image up to 5 MB. It will appear across the workspace profile entry points.
-            </p>
-
-            <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-outline-variant/20 bg-surface-container-high px-4 py-3 text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-highest">
-              <Camera className="size-4 text-secondary" />
-              <span>{selectedAvatar ? selectedAvatar.name : 'Choose image'}</span>
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(event) => {
-                  setSelectedAvatar(event.target.files?.[0] ?? null)
-                }}
-              />
-            </label>
-
-            <Button className="mt-4 w-full" onClick={handleAvatarUpload} disabled={!selectedAvatar || isUploadingAvatar}>
-              {isUploadingAvatar ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Camera className="size-4" />}
-              {isUploadingAvatar ? 'Uploading…' : 'Upload Avatar'}
-            </Button>
           </div>
         </Card>
 
-        <Card className="rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-8">
-          <CardTitle>Edit Profile</CardTitle>
-          <CardDescription className="mt-2">
-            Update how your account appears inside the learning and translation workspace.
-          </CardDescription>
+        {/* ── Edit Form ── */}
+        <Card className="rounded-[34px] border-outline-variant/12 bg-surface-container-low/90 p-8 sm:p-10">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Pencil className="size-5" />
+            </div>
+            <div>
+              <CardTitle>Edit Profile</CardTitle>
+              <CardDescription className="mt-0.5">
+                Update your name, age, and how your profile appears to others.
+              </CardDescription>
+            </div>
+          </div>
 
-          <form className="mt-8 space-y-5" onSubmit={handleSaveProfile}>
-            <Field label="Display name">
-              <input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                className={inputClassName}
-                placeholder="Alex Chen"
-                required
-                disabled={isSavingProfile}
-              />
-            </Field>
+          <form className="mt-8 space-y-6" onSubmit={handleSaveProfile}>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Field label="Display name">
+                <input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  className={inputClassName}
+                  placeholder="Alex Chen"
+                  required
+                  disabled={isSavingProfile}
+                />
+              </Field>
 
-            <div className="grid gap-5 lg:grid-cols-2">
               <Field label="Email">
                 <input
                   value={user?.email ?? ''}
-                  className={`${inputClassName} opacity-75`}
+                  className={`${inputClassName} opacity-60 cursor-not-allowed`}
                   disabled
                   readOnly
                 />
               </Field>
+            </div>
 
+            <div className="grid gap-6 lg:grid-cols-2">
               <Field label="Age">
                 <input
                   value={age}
@@ -209,6 +271,13 @@ export function ProfilePage() {
                   disabled={isSavingProfile}
                 />
               </Field>
+
+              <Field label="Profile completeness">
+                <div className="flex h-14 items-center gap-4 rounded-2xl border border-outline-variant/25 bg-surface-container px-4">
+                  <div className="flex-1"><Progress value={completeness} /></div>
+                  <span className="text-sm font-bold text-secondary">{completeness}%</span>
+                </div>
+              </Field>
             </div>
 
             <Field label="Bio">
@@ -216,30 +285,21 @@ export function ProfilePage() {
                 value={bio}
                 onChange={(event) => setBio(event.target.value)}
                 className={textAreaClassName}
-                placeholder="Add a short profile note for your learning goals."
+                placeholder="Tell others a bit about yourself and your learning goals."
                 maxLength={280}
                 disabled={isSavingProfile}
               />
+              <span className="text-right text-xs text-on-surface-variant">
+                {bio.length}/280
+              </span>
             </Field>
 
-            <div className="flex items-center justify-between gap-4 rounded-[24px] border border-outline-variant/10 bg-surface-container p-5">
-              <div>
-                <p className="font-semibold text-on-surface">Profile completeness</p>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Add age, bio, and an image so the profile feels complete across the app.
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-headline text-3xl font-black text-secondary">
-                  {computeCompleteness({ displayName, age, bio, avatarSrc })}%
-                </p>
-              </div>
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+              <Button type="submit" className="sm:min-w-44" disabled={isSavingProfile}>
+                {isSavingProfile ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" />}
+                {isSavingProfile ? 'Saving…' : 'Save Changes'}
+              </Button>
             </div>
-
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSavingProfile}>
-              {isSavingProfile ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" />}
-              {isSavingProfile ? 'Saving…' : 'Save Changes'}
-            </Button>
           </form>
         </Card>
       </div>
@@ -253,28 +313,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">{label}</span>
       {children}
     </label>
-  )
-}
-
-function ProfileFact({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Mail
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-4 rounded-[24px] border border-outline-variant/10 bg-surface-container p-4">
-      <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
-        <Icon className="size-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">{label}</p>
-        <p className="mt-1 truncate text-sm font-semibold text-on-surface">{value}</p>
-      </div>
-    </div>
   )
 }
 

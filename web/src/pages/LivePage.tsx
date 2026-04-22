@@ -53,7 +53,7 @@ type AttemptRecord = {
 
 export function LivePage({
   title = 'Live Translation Workspace',
-  subtitle = 'This page reuses the stitched live-translation layout and connects it directly to the FastAPI alphabet predictor.',
+  subtitle = 'Sign in front of your camera and see real-time AI recognition with confidence scores.',
   showLearnSubnav = false,
 }: LivePageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -496,7 +496,7 @@ export function LivePage({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <CardTitle>Configuration</CardTitle>
-                <CardDescription>Live alphabet coaching backed by the FastAPI model.</CardDescription>
+                <CardDescription>Choose a letter and practice until the AI confirms it.</CardDescription>
               </div>
               <Hand className="size-5 text-secondary" />
             </div>
@@ -578,7 +578,7 @@ export function LivePage({
                 />
               ) : (
                 <div className="flex aspect-[4/3] items-center justify-center px-6 text-center text-sm text-on-surface-variant">
-                  The backend-annotated frame will appear here once prediction starts.
+                  The AI-analyzed frame will appear here once you start signing.
                 </div>
               )}
             </div>

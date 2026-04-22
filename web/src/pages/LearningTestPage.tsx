@@ -4,7 +4,7 @@ export function LearningTestPage() {
   return (
     <LivePage
       title="Learning Test"
-      subtitle="Test your alphabet recognition in camera mode. Pick a target letter, hold the sign steady, and use the confidence and stability gates to see whether the model accepts the pose."
+      subtitle="Pick a target letter, sign it in front of your camera, and hold steady to see if you pass."
       showLearnSubnav
     />
   )
