@@ -2,10 +2,13 @@ import {
   BarChart3,
   BookOpenCheck,
   Camera,
+  CalendarDays,
   GraduationCap,
   Home,
   LogOut,
+  MessageSquare,
   Moon,
+  School,
   Settings,
   Sparkles,
   Sun,
@@ -36,8 +39,14 @@ const NAV_ITEMS = [
   { to: '/app/progress', label: 'Progress', icon: BarChart3 },
 ]
 
+const TEACHERS_SUBNAV_ITEMS = [
+  { to: '/app/classes', label: 'My Classes', icon: School },
+]
+
 const TEACHER_NAV_ITEMS = [
   { to: '/app/teacher', label: 'Teacher Dashboard', icon: GraduationCap },
+  { to: '/app/teacher/schedule', label: 'Schedule', icon: CalendarDays },
+  { to: '/app/teacher/messages', label: 'Messages', icon: MessageSquare },
   { to: '/app/teacher/settings', label: 'Profile Setup', icon: Settings },
 ]
 
@@ -47,6 +56,7 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
   const location = useLocation()
   const navItems = user?.role === 'teacher' ? TEACHER_NAV_ITEMS : NAV_ITEMS
   const isLearnSection = location.pathname === '/app/learn' || location.pathname.startsWith('/app/learn/')
+  const isTeachersSection = location.pathname === '/app/teachers' || location.pathname.startsWith('/app/classes')
 
   return (
     <div className="min-h-screen bg-background text-on-background">
@@ -101,6 +111,7 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
           {navItems.map((item) => {
             const Icon = item.icon
             const showLearnChildren = item.label === 'Learn' && isLearnSection
+            const showTeacherChildren = item.label === 'Teachers' && isTeachersSection
             return (
               <div key={item.to}>
                 <NavLink
@@ -119,6 +130,29 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
                 {showLearnChildren ? (
                   <div className="ml-6 mt-2 grid gap-1 border-l border-outline-variant/15 pl-4">
                     {LEARN_SUBNAV_ITEMS.map((subItem) => {
+                      const SubIcon = subItem.icon
+                      return (
+                        <NavLink
+                          key={subItem.to}
+                          to={subItem.to}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface',
+                              isActive && 'bg-secondary/10 text-secondary',
+                            )
+                          }
+                        >
+                          <SubIcon className="size-3.5" />
+                          {subItem.label}
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                ) : null}
+
+                {showTeacherChildren ? (
+                  <div className="ml-6 mt-2 grid gap-1 border-l border-outline-variant/15 pl-4">
+                    {TEACHERS_SUBNAV_ITEMS.map((subItem) => {
                       const SubIcon = subItem.icon
                       return (
                         <NavLink

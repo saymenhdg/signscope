@@ -119,6 +119,8 @@ class LessonBookingStatusUpdateRequest(BaseModel):
 
 class LessonBookingResponse(BaseModel):
     id: int
+    teacher_id: int
+    student_id: int
     scheduled_at: str
     duration_minutes: int
     status: str
@@ -126,12 +128,29 @@ class LessonBookingResponse(BaseModel):
     student_name: str
     student_email: str
     teacher_name: str
+    room_name: str | None = None
+    can_join: bool = False
+    join_starts_at: str | None = None
+    join_ends_at: str | None = None
     created_at: str
 
 
 class TeacherScheduleResponse(BaseModel):
     bookings: list[LessonBookingResponse]
     totals: dict[str, Any]
+
+
+class StudentScheduleResponse(BaseModel):
+    bookings: list[LessonBookingResponse]
+    totals: dict[str, Any]
+
+
+class ClassSessionResponse(BaseModel):
+    booking: LessonBookingResponse
+    join_url: str | None = None
+    can_join: bool = False
+    meeting_domain: str
+    room_name: str | None = None
 
 
 class TeacherMessageThreadSummaryResponse(BaseModel):

@@ -45,6 +45,18 @@ export type TeacherSchedule = {
   }
 }
 
+export type StudentSchedule = {
+  bookings: LessonBooking[]
+  totals: {
+    total: number
+    upcoming: number
+    pending: number
+    confirmed: number
+    completed: number
+    cancelled: number
+  }
+}
+
 export type TeacherProfileCardUpdatePayload = {
   headline: string
   intro: string
@@ -72,6 +84,8 @@ export type TeacherDirectoryResponse = {
 
 export type LessonBooking = {
   id: number
+  teacher_id: number
+  student_id: number
   scheduled_at: string
   duration_minutes: number
   status: 'pending' | 'confirmed' | 'declined' | 'completed' | 'cancelled' | string
@@ -79,10 +93,22 @@ export type LessonBooking = {
   student_name: string
   student_email: string
   teacher_name: string
+  room_name: string | null
+  can_join: boolean
+  join_starts_at: string | null
+  join_ends_at: string | null
   created_at: string
 }
 
 export type LessonBookingStatus = 'confirmed' | 'declined' | 'completed' | 'cancelled'
+
+export type ClassSession = {
+  booking: LessonBooking
+  join_url: string | null
+  can_join: boolean
+  meeting_domain: string
+  room_name: string | null
+}
 
 export type TeacherMessageThreadSummary = {
   thread_id: number

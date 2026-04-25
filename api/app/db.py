@@ -51,6 +51,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     if engine.dialect.name == "sqlite":
         _upgrade_sqlite_schema(engine)
+    _ensure_lesson_booking_columns(engine)
     _ensure_user_role_column(engine)
 
 
@@ -164,6 +165,25 @@ def _ensure_user_role_column(engine) -> None:
     statement = "ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'student'"
     with engine.begin() as connection:
         connection.execute(text(statement))
+
+
+def _ensure_lesson_booking_columns(engine) -> None:
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    if "lesson_bookings" not in table_names:
+        return
+
+    booking_columns = {column["name"] for column in inspector.get_columns("lesson_bookings")}
+    statements: list[str] = []
+    if "room_name" not in booking_columns:
+        statements.append("ALTER TABLE lesson_bookings ADD COLUMN room_name VARCHAR(120)")
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
 
 
 def get_db() -> Generator[Session, None, None]:

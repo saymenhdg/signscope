@@ -7,6 +7,7 @@ import { useAuth } from './lib/auth'
 import { DashboardPage } from './pages/DashboardPage'
 import { AuthPage } from './pages/AuthPage'
 import { AlphabetLessonPage } from './pages/AlphabetLessonPage'
+import { ClassroomPage } from './pages/ClassroomPage'
 import { LandingPage } from './pages/LandingPage'
 import { LearningHubPage } from './pages/LearningHubPage'
 import { LearningTestPage } from './pages/LearningTestPage'
@@ -19,6 +20,7 @@ import { TeacherMessagesPage } from './pages/TeacherMessagesPage'
 import { TeacherSchedulePage } from './pages/TeacherSchedulePage'
 import { TeacherSettingsPage } from './pages/TeacherSettingsPage'
 import { TeachersPage } from './pages/TeachersPage'
+import { StudentClassesPage } from './pages/StudentClassesPage'
 import { WordLessonPage } from './pages/WordLessonPage'
 
 function defaultAppPath(role: 'student' | 'teacher') {
@@ -143,6 +145,8 @@ export default function App() {
           }
         />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="classes" element={<StudentClassesPage />} />
+        <Route path="classes/:bookingId" element={<ClassroomPage />} />
         <Route path="learn" element={<LearningHubPage />} />
         <Route path="learn/alphabet" element={<AlphabetLessonPage />} />
         <Route path="learn/words" element={<WordLessonPage />} />
@@ -156,6 +160,7 @@ export default function App() {
       <Route path="/app/teacher" element={<TeacherOnlyRoute />}>
         <Route index element={<TeacherDashboardPage />} />
         <Route path="schedule" element={<TeacherSchedulePage />} />
+        <Route path="schedule/:bookingId" element={<ClassroomPage />} />
         <Route path="messages" element={<TeacherMessagesPage />} />
         <Route path="settings" element={<TeacherSettingsPage />} />
       </Route>

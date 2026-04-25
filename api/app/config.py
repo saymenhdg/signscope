@@ -52,10 +52,17 @@ class Settings(BaseSettings):
     word_min_valid_frame_ratio: float = 0.35
     word_confidence_threshold: float = 0.45
     word_min_margin: float = 0.08
+    video_call_base_url: str = "https://meet.jit.si"
+    lesson_join_early_minutes: int = 10
+    lesson_join_late_minutes: int = 30
 
     @property
     def allowed_origins(self) -> list[str]:
-        defaults = {"http://127.0.0.1:5173", "http://localhost:5173", self.frontend_origin}
+        defaults = {
+            "http://127.0.0.1:5173", "http://localhost:5173",
+            "http://127.0.0.1:5174", "http://localhost:5174",
+            self.frontend_origin,
+        }
         return sorted(defaults)
 
     @property

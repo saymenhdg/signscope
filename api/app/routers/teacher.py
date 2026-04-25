@@ -6,9 +6,11 @@ from api.app.config import Settings, get_settings
 from api.app.dependencies import get_current_teacher, get_current_user
 from api.app.models import User
 from api.app.schemas import (
+    ClassSessionResponse,
     LessonBookingCreateRequest,
     LessonBookingResponse,
     LessonBookingStatusUpdateRequest,
+    StudentScheduleResponse,
     TeacherDashboardResponse,
     TeacherDirectoryResponse,
     TeacherMessageCreateRequest,
@@ -32,7 +34,13 @@ def teacher_dashboard(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherDashboardResponse:
-    return TeacherService(db, settings.backend_origin).dashboard_overview(current_teacher)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).dashboard_overview(current_teacher)
 
 
 @router.get("/api/teacher/schedule", response_model=TeacherScheduleResponse)
@@ -41,7 +49,28 @@ def teacher_schedule(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherScheduleResponse:
-    return TeacherService(db, settings.backend_origin).schedule_overview(current_teacher)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).schedule_overview(current_teacher)
+
+
+@router.get("/api/student/schedule", response_model=StudentScheduleResponse)
+def student_schedule(
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> StudentScheduleResponse:
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).student_schedule_overview(current_user)
 
 
 @router.put("/api/teacher/profile-card", response_model=TeacherProfileCardResponse)
@@ -51,7 +80,13 @@ def update_teacher_profile_card(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherProfileCardResponse:
-    return TeacherService(db, settings.backend_origin).update_profile_card(current_teacher, request)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).update_profile_card(current_teacher, request)
 
 
 @router.get("/api/teachers", response_model=TeacherDirectoryResponse)
@@ -59,7 +94,13 @@ def teacher_directory(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherDirectoryResponse:
-    return TeacherService(db, settings.backend_origin).teacher_directory()
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).teacher_directory()
 
 
 @router.post("/api/teachers/{teacher_id}/bookings", response_model=LessonBookingResponse)
@@ -70,7 +111,13 @@ def create_teacher_booking(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> LessonBookingResponse:
-    return TeacherService(db, settings.backend_origin).create_booking(
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).create_booking(
         teacher_id=teacher_id,
         student=current_user,
         scheduled_at_raw=request.scheduled_at,
@@ -87,10 +134,35 @@ def update_teacher_booking_status(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> LessonBookingResponse:
-    return TeacherService(db, settings.backend_origin).update_booking_status(
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).update_booking_status(
         booking_id=booking_id,
         teacher=current_teacher,
         status_value=request.status,
+    )
+
+
+@router.get("/api/classes/{booking_id}", response_model=ClassSessionResponse)
+def class_session(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> ClassSessionResponse:
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).class_session(
+        booking_id=booking_id,
+        user=current_user,
     )
 
 
@@ -100,7 +172,13 @@ def teacher_messages_inbox(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherMessagesInboxResponse:
-    return TeacherService(db, settings.backend_origin).messages_inbox(current_teacher)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).messages_inbox(current_teacher)
 
 
 @router.get("/api/teacher/notifications", response_model=TeacherNotificationsResponse)
@@ -109,7 +187,13 @@ def teacher_notifications(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherNotificationsResponse:
-    return TeacherService(db, settings.backend_origin).notifications_overview(current_teacher)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).notifications_overview(current_teacher)
 
 
 @router.get("/api/teacher/messages/{thread_id}", response_model=TeacherMessageThreadResponse)
@@ -119,7 +203,13 @@ def teacher_message_thread(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherMessageThreadResponse:
-    return TeacherService(db, settings.backend_origin).message_thread_detail(user=current_teacher, thread_id=thread_id)
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).message_thread_detail(user=current_teacher, thread_id=thread_id)
 
 
 @router.post("/api/teacher/messages/{thread_id}", response_model=TeacherMessageThreadResponse)
@@ -130,7 +220,13 @@ def teacher_send_message(
     db=Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> TeacherMessageThreadResponse:
-    return TeacherService(db, settings.backend_origin).send_message(
+    return TeacherService(
+        db,
+        settings.backend_origin,
+        settings.video_call_base_url,
+        settings.lesson_join_early_minutes,
+        settings.lesson_join_late_minutes,
+    ).send_message(
         user=current_teacher,
         thread_id=thread_id,
         body=request.body,

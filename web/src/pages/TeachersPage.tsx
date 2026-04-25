@@ -53,6 +53,7 @@ export function TeachersPage() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['teacher-dashboard'] })
+      await queryClient.invalidateQueries({ queryKey: ['student-schedule'] })
       setMessage('Booking request submitted.')
       setFormError(null)
       setSelectedTeacher(null)

@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, CheckCircle2, XCircle } from 'lucide-react'
+import { CalendarClock, CheckCircle2, ExternalLink, Video, XCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { TeacherShell } from '../components/teacher/TeacherShell'
 import { Badge } from '../components/ui/badge'
-import { Button } from '../components/ui/button'
+import { Button, buttonVariants } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Skeleton } from '../components/ui/skeleton'
 import { apiRequest } from '../lib/api'
@@ -15,6 +16,7 @@ export function TeacherSchedulePage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['teacher-schedule'],
     queryFn: () => apiRequest<TeacherSchedule>('/api/teacher/schedule'),
+    refetchInterval: 30000,
   })
 
   const bookingMutation = useMutation({
@@ -141,6 +143,9 @@ function ScheduleBookingCard({
             <span>{booking.duration_minutes} min</span>
             <span>{booking.student_email}</span>
           </div>
+          {booking.status === 'confirmed' && !booking.can_join && booking.join_starts_at ? (
+            <p className="text-sm text-on-surface-variant">Join opens {new Date(booking.join_starts_at).toLocaleString()}.</p>
+          ) : null}
           {booking.note ? <p className="text-sm leading-7 text-on-surface-variant">{booking.note}</p> : null}
         </div>
 
@@ -167,6 +172,13 @@ function ScheduleBookingCard({
             </>
           ) : booking.status === 'confirmed' ? (
             <>
+              <Link
+                to={`/app/teacher/schedule/${booking.id}`}
+                className={cn(buttonVariants({ variant: booking.can_join ? 'default' : 'secondary' }), 'rounded-full')}
+              >
+                {booking.can_join ? <Video className="size-4" /> : <ExternalLink className="size-4" />}
+                {booking.can_join ? 'Join Class' : 'Open Class'}
+              </Link>
               <Button
                 className="rounded-full"
                 disabled={isWorking}

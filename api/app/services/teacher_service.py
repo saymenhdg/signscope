@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -9,7 +10,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from api.app.models import LessonBooking, MessageThread, TeacherProfile, ThreadMessage, User
 from api.app.schemas import (
+    ClassSessionResponse,
     LessonBookingResponse,
+    StudentScheduleResponse,
     TeacherDashboardResponse,
     TeacherDirectoryResponse,
     TeacherNotificationItemResponse,
@@ -31,6 +34,9 @@ UTC = timezone.utc
 class TeacherService:
     db: Session
     backend_origin: str
+    video_call_base_url: str
+    lesson_join_early_minutes: int = 10
+    lesson_join_late_minutes: int = 30
 
     def dashboard_overview(self, user: User) -> TeacherDashboardResponse:
         profile = self._get_or_create_profile(user)
@@ -62,18 +68,16 @@ class TeacherService:
 
     def schedule_overview(self, user: User) -> TeacherScheduleResponse:
         bookings = self._teacher_bookings(user)
-        now = datetime.now(UTC)
-        totals = {
-            "total": len(bookings),
-            "upcoming": sum(1 for booking in bookings if booking.scheduled_at >= now and booking.status in {"pending", "confirmed"}),
-            "pending": sum(1 for booking in bookings if booking.status == "pending"),
-            "confirmed": sum(1 for booking in bookings if booking.status == "confirmed"),
-            "completed": sum(1 for booking in bookings if booking.status == "completed"),
-            "cancelled": sum(1 for booking in bookings if booking.status in {"declined", "cancelled"}),
-        }
         return TeacherScheduleResponse(
             bookings=[self._booking_response(booking) for booking in bookings],
-            totals=totals,
+            totals=self._booking_totals(bookings),
+        )
+
+    def student_schedule_overview(self, user: User) -> StudentScheduleResponse:
+        bookings = self._student_bookings(user)
+        return StudentScheduleResponse(
+            bookings=[self._booking_response(booking) for booking in bookings],
+            totals=self._booking_totals(bookings),
         )
 
     def messages_inbox(self, user: User) -> TeacherMessagesInboxResponse:
@@ -240,6 +244,7 @@ class TeacherService:
             duration_minutes=duration_minutes or profile.lesson_duration_minutes,
             note=note.strip()[:500] if note and note.strip() else None,
             status="pending",
+            room_name=self._build_room_name(teacher=teacher, student=student, scheduled_at=scheduled_at),
         )
         self.db.add(booking)
         self.db.commit()
@@ -270,6 +275,27 @@ class TeacherService:
         booking.teacher = booking.teacher or teacher
         return self._booking_response(booking)
 
+    def class_session(self, *, booking_id: int, user: User) -> ClassSessionResponse:
+        booking = self.db.scalar(
+            select(LessonBooking)
+            .options(joinedload(LessonBooking.student), joinedload(LessonBooking.teacher))
+            .where(
+                LessonBooking.id == booking_id,
+                (LessonBooking.teacher_id == user.id) | (LessonBooking.student_id == user.id),
+            )
+        )
+        if booking is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found.")
+
+        payload = self._booking_response(booking)
+        return ClassSessionResponse(
+            booking=payload,
+            join_url=self._meeting_join_url(booking.room_name) if payload.can_join and booking.room_name else None,
+            can_join=payload.can_join,
+            meeting_domain=self.video_call_base_url,
+            room_name=booking.room_name,
+        )
+
     def _get_or_create_profile(self, user: User) -> TeacherProfile:
         profile = user.teacher_profile
         if profile is not None:
@@ -294,6 +320,17 @@ class TeacherService:
             select(LessonBooking)
             .options(joinedload(LessonBooking.student), joinedload(LessonBooking.teacher))
             .where(LessonBooking.teacher_id == user.id)
+            .order_by(LessonBooking.scheduled_at.asc())
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        return self.db.scalars(statement).all()
+
+    def _student_bookings(self, user: User, limit: int | None = None) -> list[LessonBooking]:
+        statement = (
+            select(LessonBooking)
+            .options(joinedload(LessonBooking.student), joinedload(LessonBooking.teacher))
+            .where(LessonBooking.student_id == user.id)
             .order_by(LessonBooking.scheduled_at.asc())
         )
         if limit is not None:
@@ -430,8 +467,11 @@ class TeacherService:
         )
 
     def _booking_response(self, booking: LessonBooking) -> LessonBookingResponse:
+        join_window = self._booking_join_window(booking)
         return LessonBookingResponse(
             id=booking.id,
+            teacher_id=booking.teacher_id,
+            student_id=booking.student_id,
             scheduled_at=self._as_utc(booking.scheduled_at).isoformat(),
             duration_minutes=booking.duration_minutes,
             status=booking.status,
@@ -439,8 +479,43 @@ class TeacherService:
             student_name=booking.student.display_name,
             student_email=booking.student.email,
             teacher_name=booking.teacher.display_name,
+            room_name=booking.room_name,
+            can_join=join_window["can_join"],
+            join_starts_at=join_window["join_starts_at"],
+            join_ends_at=join_window["join_ends_at"],
             created_at=self._as_utc(booking.created_at).isoformat(),
         )
+
+    def _booking_totals(self, bookings: list[LessonBooking]) -> dict[str, int]:
+        now = datetime.now(UTC)
+        return {
+            "total": len(bookings),
+            "upcoming": sum(1 for booking in bookings if self._as_utc(booking.scheduled_at) >= now and booking.status in {"pending", "confirmed"}),
+            "pending": sum(1 for booking in bookings if booking.status == "pending"),
+            "confirmed": sum(1 for booking in bookings if booking.status == "confirmed"),
+            "completed": sum(1 for booking in bookings if booking.status == "completed"),
+            "cancelled": sum(1 for booking in bookings if booking.status in {"declined", "cancelled"}),
+        }
+
+    def _booking_join_window(self, booking: LessonBooking) -> dict[str, str | bool]:
+        scheduled_at = self._as_utc(booking.scheduled_at)
+        join_starts_at = scheduled_at - timedelta(minutes=self.lesson_join_early_minutes)
+        join_ends_at = scheduled_at + timedelta(minutes=booking.duration_minutes + self.lesson_join_late_minutes)
+        now = datetime.now(UTC)
+        return {
+            "can_join": booking.status == "confirmed" and bool(booking.room_name) and join_starts_at <= now <= join_ends_at,
+            "join_starts_at": join_starts_at.isoformat(),
+            "join_ends_at": join_ends_at.isoformat(),
+        }
+
+    def _build_room_name(self, *, teacher: User, student: User, scheduled_at: datetime) -> str:
+        slug = f"{teacher.display_name}-{student.display_name}"
+        slug = re.sub(r"[^a-zA-Z0-9]+", "-", slug).strip("-").lower()
+        stamp = self._as_utc(scheduled_at).strftime("%Y%m%d%H%M")
+        return f"signspeak-{slug[:60]}-{stamp}-{teacher.id}-{student.id}"
+
+    def _meeting_join_url(self, room_name: str) -> str:
+        return f"{self.video_call_base_url.rstrip('/')}/{room_name}"
 
     def _split_specialties(self, raw: str | None) -> list[str]:
         if not raw:

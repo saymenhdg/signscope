@@ -141,6 +141,7 @@ class LessonBooking(TimestampMixin, Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, default=45)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    room_name: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
 
     teacher: Mapped[User] = relationship(
         back_populates="lesson_bookings_as_teacher",
