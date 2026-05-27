@@ -3,6 +3,7 @@ import {
   BookOpenCheck,
   Camera,
   CalendarDays,
+  Cog,
   GraduationCap,
   Home,
   LogOut,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Sun,
   UserCircle2,
+  Users,
 } from 'lucide-react'
 import type { PropsWithChildren } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -32,31 +34,44 @@ type AppShellProps = PropsWithChildren<{
 }>
 
 const NAV_ITEMS = [
-  { to: '/app/dashboard', label: 'Dashboard', icon: Home },
+  { to: '/app/dashboard', label: 'Dashboard', icon: Home, end: true },
   { to: '/app/learn', label: 'Learn', icon: BookOpenCheck },
-  { to: '/app/teachers', label: 'Teachers', icon: GraduationCap },
-  { to: '/app/live', label: 'Live', icon: Camera },
-  { to: '/app/progress', label: 'Progress', icon: BarChart3 },
+  { to: '/app/teachers', label: 'Teachers', icon: GraduationCap, end: true },
+  { to: '/app/live', label: 'Live', icon: Camera, end: true },
+  { to: '/app/progress', label: 'Progress', icon: BarChart3, end: true },
 ]
 
 const TEACHERS_SUBNAV_ITEMS = [
   { to: '/app/classes', label: 'My Classes', icon: School },
 ]
 
+const ADMIN_TEACHERS_SUBNAV_ITEMS = [
+  { to: '/app/admin/teachers/classes', label: 'Classes', icon: School },
+]
+
 const TEACHER_NAV_ITEMS = [
-  { to: '/app/teacher', label: 'Teacher Dashboard', icon: GraduationCap },
+  { to: '/app/teacher', label: 'Teacher Dashboard', icon: GraduationCap, end: true },
   { to: '/app/teacher/schedule', label: 'Schedule', icon: CalendarDays },
-  { to: '/app/teacher/messages', label: 'Messages', icon: MessageSquare },
-  { to: '/app/teacher/settings', label: 'Profile Setup', icon: Settings },
+  { to: '/app/teacher/messages', label: 'Messages', icon: MessageSquare, end: true },
+  { to: '/app/teacher/settings', label: 'Profile Setup', icon: Settings, end: true },
+]
+
+const ADMIN_NAV_ITEMS = [
+  { to: '/app/admin', label: 'Admin Dashboard', icon: Cog, end: true },
+  { to: '/app/admin/users', label: 'Users', icon: Users, end: true },
+  { to: '/app/admin/teachers', label: 'Teachers', icon: GraduationCap, end: true },
 ]
 
 export function AppShell({ children, title, subtitle, hideHeader = false }: AppShellProps) {
   const { user, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
-  const navItems = user?.role === 'teacher' ? TEACHER_NAV_ITEMS : NAV_ITEMS
+  const navItems = user?.role === 'teacher' ? TEACHER_NAV_ITEMS : user?.role === 'admin' ? ADMIN_NAV_ITEMS : NAV_ITEMS
   const isLearnSection = location.pathname === '/app/learn' || location.pathname.startsWith('/app/learn/')
   const isTeachersSection = location.pathname === '/app/teachers' || location.pathname.startsWith('/app/classes')
+  const isAdminTeachersSection = location.pathname === '/app/admin/teachers' || location.pathname.startsWith('/app/admin/teachers/')
+  const workspaceLabel = user?.role === 'teacher' ? 'Teacher Workspace' : user?.role === 'admin' ? 'Admin Workspace' : 'Workspace'
+  const profileRoleLabel = user?.role === 'teacher' ? 'Teacher' : user?.role === 'admin' ? 'Admin' : 'Student'
 
   return (
     <div className="min-h-screen bg-background text-on-background">
@@ -67,9 +82,7 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
           </div>
           <div>
             <p className="font-headline text-xl font-extrabold text-primary">SignSpeak AI</p>
-            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
-              {user?.role === 'teacher' ? 'Teacher Workspace' : 'Workspace'}
-            </p>
+            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">{workspaceLabel}</p>
           </div>
         </div>
 
@@ -102,7 +115,7 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-on-surface">{user?.display_name}</p>
-            <p className="truncate text-xs text-on-surface-variant">{user?.role === 'teacher' ? 'Teacher' : 'Student'}</p>
+            <p className="truncate text-xs text-on-surface-variant">{profileRoleLabel}</p>
           </div>
           <Settings className="size-4 shrink-0 text-on-surface-variant/60" />
         </NavLink>
@@ -112,10 +125,12 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
             const Icon = item.icon
             const showLearnChildren = item.label === 'Learn' && isLearnSection
             const showTeacherChildren = item.label === 'Teachers' && isTeachersSection
+            const showAdminTeacherChildren = user?.role === 'admin' && item.label === 'Teachers' && isAdminTeachersSection
             return (
               <div key={item.to}>
                 <NavLink
                   to={item.to}
+                  end={item.end}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-4 rounded-2xl px-4 py-3 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container hover:text-on-surface',
@@ -153,6 +168,29 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
                 {showTeacherChildren ? (
                   <div className="ml-6 mt-2 grid gap-1 border-l border-outline-variant/15 pl-4">
                     {TEACHERS_SUBNAV_ITEMS.map((subItem) => {
+                      const SubIcon = subItem.icon
+                      return (
+                        <NavLink
+                          key={subItem.to}
+                          to={subItem.to}
+                          className={({ isActive }) =>
+                            cn(
+                              'flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface',
+                              isActive && 'bg-secondary/10 text-secondary',
+                            )
+                          }
+                        >
+                          <SubIcon className="size-3.5" />
+                          {subItem.label}
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                ) : null}
+
+                {showAdminTeacherChildren ? (
+                  <div className="ml-6 mt-2 grid gap-1 border-l border-outline-variant/15 pl-4">
+                    {ADMIN_TEACHERS_SUBNAV_ITEMS.map((subItem) => {
                       const SubIcon = subItem.icon
                       return (
                         <NavLink
@@ -261,6 +299,7 @@ export function AppShell({ children, title, subtitle, hideHeader = false }: AppS
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
                   'flex min-w-16 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-on-surface-variant transition-colors',

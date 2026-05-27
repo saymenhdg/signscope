@@ -9,6 +9,7 @@ import torch
 from signlang.utils import resolve_device
 from signlang.word_landmark_data import (
     PER_FRAME_FEATURE_DIM,
+    horizontal_flip_sequence,
     resample_sequence,
 )
 from signlang.word_landmark_model import WordLandmarkRecognizer
@@ -43,6 +44,7 @@ def predict_word_sequence(
     device: torch.device,
     sequence_length: int,
     top_k: int = 5,
+    mirror_tta: bool = True,
 ) -> tuple[str, float, list[tuple[str, float]]]:
     """Run a forward pass over a single ``(T, F)`` landmark sequence.
 
@@ -65,7 +67,14 @@ def predict_word_sequence(
     sequence = resample_sequence(sequence, sequence_length)
     tensor = torch.from_numpy(sequence).unsqueeze(0).to(device)
     logits = model(tensor)
-    probabilities = torch.softmax(logits, dim=-1)[0].detach().cpu()
+    probabilities = torch.softmax(logits, dim=-1)[0]
+    if mirror_tta:
+        mirrored = horizontal_flip_sequence(sequence)
+        mirrored_tensor = torch.from_numpy(mirrored).unsqueeze(0).to(device)
+        mirrored_logits = model(mirrored_tensor)
+        mirrored_probabilities = torch.softmax(mirrored_logits, dim=-1)[0]
+        probabilities = (probabilities + mirrored_probabilities) / 2.0
+    probabilities = probabilities.detach().cpu()
     ranked_indices = torch.argsort(probabilities, descending=True).tolist()
 
     top = [(labels[index], float(probabilities[index].item())) for index in ranked_indices[:top_k]]

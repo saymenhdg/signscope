@@ -19,7 +19,7 @@ from api.app.services.oauth_service import OAuthIdentity
 
 
 UTC = timezone.utc
-ALLOWED_USER_ROLES = {"student", "teacher"}
+ALLOWED_USER_ROLES = {"student", "teacher", "admin"}
 
 
 @dataclass

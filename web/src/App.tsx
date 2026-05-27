@@ -5,6 +5,10 @@ import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { ScrollToTop } from './components/scroll-to-top'
 import { useAuth } from './lib/auth'
 import { DashboardPage } from './pages/DashboardPage'
+import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { AdminUsersPage } from './pages/AdminUsersPage'
+import { AdminTeachersPage } from './pages/AdminTeachersPage'
+import { AdminClassesPage } from './pages/AdminClassesPage'
 import { AuthPage } from './pages/AuthPage'
 import { AlphabetLessonPage } from './pages/AlphabetLessonPage'
 import { ClassroomPage } from './pages/ClassroomPage'
@@ -23,8 +27,10 @@ import { TeachersPage } from './pages/TeachersPage'
 import { StudentClassesPage } from './pages/StudentClassesPage'
 import { WordLessonPage } from './pages/WordLessonPage'
 
-function defaultAppPath(role: 'student' | 'teacher') {
-  return role === 'teacher' ? '/app/teacher' : '/app/dashboard'
+function defaultAppPath(role: 'student' | 'teacher' | 'admin') {
+  if (role === 'teacher') return '/app/teacher'
+  if (role === 'admin') return '/app/admin'
+  return '/app/dashboard'
 }
 
 function ProtectedRoutes() {
@@ -66,6 +72,24 @@ function TeacherOnlyRoute() {
 
   if (user.role !== 'teacher') {
     return <Navigate to="/app/dashboard" replace />
+  }
+
+  return <Outlet />
+}
+
+function AdminOnlyRoute() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user.role !== 'admin') {
+    return <Navigate to={defaultAppPath(user.role)} replace />
   }
 
   return <Outlet />
@@ -129,6 +153,14 @@ export default function App() {
         }
       />
       <Route
+        path="/admin/login"
+        element={
+          <PublicOnlyRoute>
+            <AuthPage mode="login" audience="admin" />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
         path="/teacher/register"
         element={
           <PublicOnlyRoute>
@@ -163,6 +195,12 @@ export default function App() {
         <Route path="schedule/:bookingId" element={<ClassroomPage />} />
         <Route path="messages" element={<TeacherMessagesPage />} />
         <Route path="settings" element={<TeacherSettingsPage />} />
+      </Route>
+      <Route path="/app/admin" element={<AdminOnlyRoute />}>
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="teachers" element={<AdminTeachersPage />} />
+        <Route path="teachers/classes" element={<AdminClassesPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

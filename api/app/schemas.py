@@ -10,7 +10,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     display_name: str
-    role: Literal["student", "teacher"]
+    role: Literal["student", "teacher", "admin"]
     age: int | None
     bio: str | None
     avatar_url: str | None
@@ -28,7 +28,7 @@ class RegisterRequest(AuthRequest):
 
 
 class LoginRequest(AuthRequest):
-    role: Literal["student", "teacher"] | None = None
+    role: Literal["student", "teacher", "admin"] | None = None
 
 
 class AuthResponse(BaseModel):
@@ -221,6 +221,93 @@ class ProgressOverviewResponse(BaseModel):
     track_breakdown: list[dict[str, Any]] = Field(default_factory=list)
     focus_labels: list[dict[str, Any]] = Field(default_factory=list)
     recent_sessions: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class AdminOverviewResponse(BaseModel):
+    stats: dict[str, Any]
+    growth: dict[str, Any]
+    model: dict[str, Any]
+    role_distribution: list[dict[str, Any]] = Field(default_factory=list)
+    booking_statuses: list[dict[str, Any]] = Field(default_factory=list)
+    low_accuracy_labels: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class AdminUserListItemResponse(BaseModel):
+    id: int
+    email: str
+    display_name: str
+    role: Literal["student", "teacher", "admin"]
+    age: int | None
+    bio: str | None
+    avatar_url: str | None
+    is_email_verified: bool
+    joined_at: str
+
+
+class AdminTeacherProfileResponse(BaseModel):
+    teacher_id: int
+    display_name: str
+    email: str
+    avatar_url: str | None
+    bio: str | None
+    is_email_verified: bool
+    headline: str | None
+    intro: str | None
+    specialties: list[str] = Field(default_factory=list)
+    hourly_rate_usd: int | None
+    lesson_duration_minutes: int
+    is_public: bool
+    profile_completion_percent: int
+    joined_at: str
+    updated_at: str
+
+
+class AdminUsersResponse(BaseModel):
+    users: list[AdminUserListItemResponse] = Field(default_factory=list)
+
+
+class AdminTeacherProfilesResponse(BaseModel):
+    teachers: list[AdminTeacherProfileResponse] = Field(default_factory=list)
+
+
+class AdminClassItemResponse(BaseModel):
+    id: int
+    teacher_id: int
+    teacher_name: str
+    teacher_email: str
+    student_id: int
+    student_name: str
+    student_email: str
+    scheduled_at: str
+    duration_minutes: int
+    status: str
+    note: str | None
+    room_name: str | None
+    created_at: str
+
+
+class AdminClassesResponse(BaseModel):
+    classes: list[AdminClassItemResponse] = Field(default_factory=list)
+
+
+class AdminUserUpdateRequest(BaseModel):
+    display_name: str = Field(..., min_length=2, max_length=80)
+    role: Literal["student", "teacher", "admin"]
+    age: int | None = Field(default=None, ge=1, le=120)
+    bio: str | None = Field(default=None, max_length=280)
+    is_email_verified: bool
+
+
+class AdminTeacherProfileUpdateRequest(BaseModel):
+    display_name: str = Field(..., min_length=2, max_length=80)
+    bio: str | None = Field(default=None, max_length=280)
+    is_email_verified: bool
+    headline: str | None = Field(default=None, max_length=140)
+    intro: str | None = Field(default=None, max_length=500)
+    specialties: list[str] = Field(default_factory=list, max_length=6)
+    hourly_rate_usd: int | None = Field(default=None, ge=0, le=1000)
+    lesson_duration_minutes: int = Field(default=45, ge=15, le=180)
+    is_public: bool = False
 
 
 class HealthResponse(BaseModel):

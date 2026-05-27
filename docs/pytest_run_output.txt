@@ -1,0 +1,14 @@
+================================== test session starts ==================================
+platform win32 -- Python 3.13.1, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\15047\Desktop\sign\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\15047\Desktop\sign
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.13.0
+collected 3 items
+
+tests/test_api_smoke.py::test_health_and_vocab_endpoints PASSED                    [ 33%]
+tests/test_api_smoke.py::test_student_auth_and_learning_flow PASSED                [ 66%]
+tests/test_api_smoke.py::test_teacher_booking_and_admin_flow PASSED               [100%]
+
+====================== 3 passed, 13 warnings in 147.22s (0:02:27) ======================

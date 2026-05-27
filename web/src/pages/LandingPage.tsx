@@ -77,10 +77,10 @@ export function LandingPage() {
   const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const primaryCta = user ? '/app/dashboard' : '/register'
-  const primaryLabel = user ? 'Open Dashboard' : 'Start Learning Free'
-  const secondaryCta = user?.role === 'teacher' ? '/app/teacher' : user ? '/app/learn' : '/teacher/register'
-  const secondaryLabel = user?.role === 'teacher' ? 'Teacher Workspace' : user ? 'Learning Hub' : 'Join as Teacher'
+  const primaryCta = user ? (user.role === 'teacher' ? '/app/teacher' : user.role === 'admin' ? '/app/admin' : '/app/dashboard') : '/register'
+  const primaryLabel = user ? (user.role === 'admin' ? 'Open Admin Workspace' : 'Open Dashboard') : 'Start Learning Free'
+  const secondaryCta = user?.role === 'teacher' ? '/app/teacher' : user?.role === 'admin' ? '/app/profile' : user ? '/app/learn' : '/teacher/register'
+  const secondaryLabel = user?.role === 'teacher' ? 'Teacher Workspace' : user?.role === 'admin' ? 'Account Settings' : user ? 'Learning Hub' : 'Join as Teacher'
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-on-background">
@@ -242,11 +242,11 @@ export function LandingPage() {
                   all through a dedicated teacher workspace.
                 </p>
                 <Link
-                  to={user?.role === 'teacher' ? '/app/teacher' : '/teacher/register'}
+                  to={user?.role === 'teacher' ? '/app/teacher' : user?.role === 'admin' ? '/app/admin' : '/teacher/register'}
                   className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'mt-8')}
                 >
                   <GraduationCap className="size-4" />
-                  {user?.role === 'teacher' ? 'Open Teacher Workspace' : 'Join as a Teacher'}
+                  {user?.role === 'teacher' ? 'Open Teacher Workspace' : user?.role === 'admin' ? 'Open Admin Workspace' : 'Join as a Teacher'}
                 </Link>
               </div>
 

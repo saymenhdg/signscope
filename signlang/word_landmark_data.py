@@ -233,6 +233,46 @@ def horizontal_flip_sequence(sequence: np.ndarray) -> np.ndarray:
     return out
 
 
+def fill_missing_frames(sequence: np.ndarray) -> np.ndarray:
+    """Fill fully-missing frames from nearby valid neighbours.
+
+    MediaPipe occasionally drops a frame inside an otherwise clean clip. During
+    inference those all-zero frames create artificial motion discontinuities.
+    Copying the nearest valid feature vector keeps the temporal trajectory
+    stable while the caller can still track the original valid-frame ratio
+    separately for confidence gating.
+    """
+
+    if sequence.ndim != 2 or sequence.shape[1] != PER_FRAME_FEATURE_DIM:
+        raise ValueError(
+            f"Expected (T, {PER_FRAME_FEATURE_DIM}) sequence, got {sequence.shape}"
+        )
+
+    filled = sequence.astype(np.float32, copy=True)
+    presence = filled[:, -2:]
+    valid_mask = np.any(presence > 0.0, axis=1)
+    if valid_mask.all() or not valid_mask.any():
+        return filled
+
+    valid_indices = np.flatnonzero(valid_mask)
+    first_valid = int(valid_indices[0])
+    last_valid = int(valid_indices[-1])
+
+    for index in range(0, first_valid):
+        filled[index] = filled[first_valid]
+    for index in range(last_valid + 1, filled.shape[0]):
+        filled[index] = filled[last_valid]
+
+    for start, end in zip(valid_indices[:-1], valid_indices[1:]):
+        if end - start <= 1:
+            continue
+        gap = end - start - 1
+        midpoint = start + 1 + gap // 2
+        for index in range(start + 1, end):
+            filled[index] = filled[start] if index <= midpoint else filled[end]
+    return filled
+
+
 def augment_sequence(sequence: np.ndarray) -> np.ndarray:
     """Apply lightweight training augmentation to a (T, F) feature sequence.
 
@@ -388,6 +428,8 @@ class WordLandmarkDataset(Dataset[tuple[torch.Tensor, int]]):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
         record = self.records[index]
         sequence = record.as_array()
+        if self.training:
+            sequence = temporal_crop_sequence(sequence)
         sequence = resample_sequence(sequence, self.sequence_length)
         if self.training:
             sequence = augment_sequence(sequence)

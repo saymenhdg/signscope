@@ -115,6 +115,24 @@ Current tuned live setup:
 py -3.13 -m uvicorn api.main:app --reload
 ```
 
+### Admin login on PostgreSQL
+
+The app already supports PostgreSQL through `DATABASE_URL`. To create an admin account in the configured Postgres database:
+
+```powershell
+py -3.13 scripts\create_admin.py `
+  --email admin@signspeak.local `
+  --password "change-this-password" `
+  --display-name "SignSpeak Admin" `
+  --verified
+```
+
+Then sign in at:
+
+```text
+http://localhost:5173/admin/login
+```
+
 ### 6. Run the React learning UI
 
 ```powershell

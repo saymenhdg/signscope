@@ -2,7 +2,7 @@ export type User = {
   id: number
   email: string
   display_name: string
-  role: 'student' | 'teacher'
+  role: 'student' | 'teacher' | 'admin'
   age: number | null
   bio: string | null
   avatar_url: string | null
@@ -290,6 +290,127 @@ export type ProgressOverview = {
     duration_minutes: number
     completed_at: string
   }>
+}
+
+export type AdminOverview = {
+  stats: {
+    total_users: number
+    total_teachers: number
+    total_admins: number
+    public_teachers: number
+    total_bookings: number
+    pending_bookings: number
+    recent_sessions: number
+    recent_attempts: number
+    recent_accuracy: number
+  }
+  growth: {
+    dataset_records: number
+    dataset_classes: number
+    word_vocabulary: number
+    word_sequence_length: number
+  }
+  model: {
+    active_checkpoint: string
+    checkpoint_name: string
+    best_val_accuracy: number
+    test_accuracy: number
+    test_loss: number
+    epochs: number
+    mirror_tta_enabled: boolean
+  }
+  role_distribution: Array<{
+    role: string
+    count: number
+  }>
+  booking_statuses: Array<{
+    status: string
+    count: number
+  }>
+  low_accuracy_labels: Array<{
+    label: string
+    accuracy: number
+    attempts: number
+    track: string
+  }>
+}
+
+export type AdminUserListItem = {
+  id: number
+  email: string
+  display_name: string
+  role: 'student' | 'teacher' | 'admin'
+  age: number | null
+  bio: string | null
+  avatar_url: string | null
+  is_email_verified: boolean
+  joined_at: string
+}
+
+export type AdminUsersResponse = {
+  users: AdminUserListItem[]
+}
+
+export type AdminUserUpdatePayload = {
+  display_name: string
+  role: 'student' | 'teacher' | 'admin'
+  age: number | null
+  bio: string | null
+  is_email_verified: boolean
+}
+
+export type AdminTeacherProfile = {
+  teacher_id: number
+  display_name: string
+  email: string
+  avatar_url: string | null
+  bio: string | null
+  is_email_verified: boolean
+  headline: string | null
+  intro: string | null
+  specialties: string[]
+  hourly_rate_usd: number | null
+  lesson_duration_minutes: number
+  is_public: boolean
+  profile_completion_percent: number
+  joined_at: string
+  updated_at: string
+}
+
+export type AdminTeacherProfilesResponse = {
+  teachers: AdminTeacherProfile[]
+}
+
+export type AdminClassItem = {
+  id: number
+  teacher_id: number
+  teacher_name: string
+  teacher_email: string
+  student_id: number
+  student_name: string
+  student_email: string
+  scheduled_at: string
+  duration_minutes: number
+  status: string
+  note: string | null
+  room_name: string | null
+  created_at: string
+}
+
+export type AdminClassesResponse = {
+  classes: AdminClassItem[]
+}
+
+export type AdminTeacherProfileUpdatePayload = {
+  display_name: string
+  bio: string | null
+  is_email_verified: boolean
+  headline: string | null
+  intro: string | null
+  specialties: string[]
+  hourly_rate_usd: number | null
+  lesson_duration_minutes: number
+  is_public: boolean
 }
 
 export type TopPrediction = {

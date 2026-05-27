@@ -10,7 +10,13 @@ type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
 
 type AuthPageProps = {
   mode: AuthMode
-  audience?: 'student' | 'teacher'
+  audience?: 'student' | 'teacher' | 'admin'
+}
+
+function defaultRedirectPath(role: 'student' | 'teacher' | 'admin') {
+  if (role === 'teacher') return '/app/teacher'
+  if (role === 'admin') return '/app/admin'
+  return '/app/dashboard'
 }
 
 export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
@@ -31,9 +37,10 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   const isForgot = mode === 'forgot'
   const isReset = mode === 'reset'
   const isTeacherAudience = audience === 'teacher'
+  const isAdminAudience = audience === 'admin'
   const authError = searchParams.get('authError')
   const resetToken = searchParams.get('token') ?? ''
-  const fallbackRedirect = isTeacherAudience ? '/app/teacher' : '/app/dashboard'
+  const fallbackRedirect = isTeacherAudience ? '/app/teacher' : isAdminAudience ? '/app/admin' : '/app/dashboard'
   const requestedRedirect = (location.state as { from?: string } | null)?.from
   const redirectTo = requestedRedirect ?? fallbackRedirect
 
@@ -75,7 +82,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
             password,
             role: audience,
           })
-          navigate(requestedRedirect ?? (user.role === 'teacher' ? '/app/teacher' : '/app/dashboard'), { replace: true })
+          navigate(requestedRedirect ?? defaultRedirectPath(user.role), { replace: true })
           return
         }
 
@@ -92,8 +99,8 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
           return
         }
 
-        const user = await signIn({ email: email.trim(), password, role: isTeacherAudience ? 'teacher' : undefined })
-        navigate(requestedRedirect ?? (user.role === 'teacher' ? '/app/teacher' : '/app/dashboard'), { replace: true })
+        const user = await signIn({ email: email.trim(), password, role: isTeacherAudience ? 'teacher' : isAdminAudience ? 'admin' : undefined })
+        navigate(requestedRedirect ?? defaultRedirectPath(user.role), { replace: true })
       } catch (submitError) {
         setError(submitError instanceof Error ? submitError.message : 'Authentication failed.')
       } finally {
@@ -103,6 +110,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   }
 
   function title() {
+    if (isAdminAudience) return 'Admin Sign In'
     if (isTeacherAudience && isRegister) return 'Teacher Register'
     if (isTeacherAudience) return 'Teacher Sign In'
     if (isRegister) return 'Register'
@@ -112,6 +120,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   }
 
   function subtitle() {
+    if (isAdminAudience) return 'Access the admin workspace.'
     if (isTeacherAudience && isRegister) return 'Set up your teaching profile.'
     if (isTeacherAudience) return 'Access your teaching dashboard.'
     if (isRegister) return 'Create your free account.'
@@ -121,6 +130,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   }
 
   function heroTitle() {
+    if (isAdminAudience) return 'System administration access.'
     if (isTeacherAudience && isRegister) return 'Start teaching sign language.'
     if (isTeacherAudience) return 'Welcome back, teacher.'
     if (isRegister) return 'Start your sign language journey.'
@@ -130,6 +140,9 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
   }
 
   function heroText() {
+    if (isAdminAudience) {
+      return 'Sign in to manage model operations, system analytics, platform users, and deployment-level settings.'
+    }
     if (isTeacherAudience && isRegister) {
       return 'Create your teacher account to set up your profile, manage lesson availability, and connect with students learning sign language.'
     }
@@ -194,7 +207,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
               </div>
             </div>
 
-            {providers.length > 0 && !isForgot && !isReset && !isTeacherAudience ? (
+            {providers.length > 0 && !isForgot && !isReset && !isTeacherAudience && !isAdminAudience ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {providers.map((provider) => {
@@ -315,6 +328,8 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
                           ? 'Update Password'
                           : isTeacherAudience
                             ? 'Sign In as Teacher'
+                            : isAdminAudience
+                              ? 'Sign In as Admin'
                             : 'Sign In'}
                 </span>
                 {!isSubmitting ? <ArrowRight className="size-4" /> : null}
@@ -335,7 +350,7 @@ export function AuthPage({ mode, audience = 'student' }: AuthPageProps) {
                     {isTeacherAudience ? 'Create a teacher account' : 'Create one'}
                   </Link>
                 </p>
-                {!isTeacherAudience ? (
+                {!isTeacherAudience && !isAdminAudience ? (
                   <p>
                     Are you teaching on the platform?{' '}
                     <Link to="/teacher/login" className="font-semibold text-secondary transition-colors hover:text-secondary-fixed">

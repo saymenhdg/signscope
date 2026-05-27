@@ -18,7 +18,7 @@ from api.app.schemas import (
     WordVocabularyResponse,
 )
 from api.app.services.ml_service import decode_base64_image as _decode_base64_image
-from signlang.word_landmark_data import PER_FRAME_FEATURE_DIM, normalize_frame
+from signlang.word_landmark_data import PER_FRAME_FEATURE_DIM, fill_missing_frames, normalize_frame
 from signlang.word_landmark_inference import load_word_checkpoint, predict_word_sequence
 
 
@@ -113,6 +113,7 @@ class WordInferenceService:
                 device=self.device,
                 sequence_length=sequence_length,
                 top_k=top_k,
+                mirror_tta=self.settings.word_mirror_tta,
             )
 
         runner_up = top[1][1] if len(top) > 1 else 0.0
@@ -163,17 +164,27 @@ class WordInferenceService:
 
         frames: list[list[float]] = []
         valid_frames = 0
+        pending_missing: list[int] = []
         with self.lock:
             for encoded in request.images_base64:
                 frame_bgr = _decode_base64_image(encoded)
                 rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
                 left_hand, right_hand, pose = self._extract_landmarks(rgb)
                 if pose is None and left_hand is None and right_hand is None:
-                    frames.append([0.0] * PER_FRAME_FEATURE_DIM)
+                    if frames:
+                        frames.append(list(frames[-1]))
+                    else:
+                        frames.append([0.0] * PER_FRAME_FEATURE_DIM)
+                    pending_missing.append(len(frames) - 1)
                     continue
                 valid_frames += 1
                 feature = normalize_frame(left_hand, right_hand, pose)
-                frames.append(feature.tolist())
+                feature_list = feature.tolist()
+                frames.append(feature_list)
+                if pending_missing:
+                    for missing_index in pending_missing:
+                        frames[missing_index] = list(feature_list)
+                    pending_missing.clear()
 
         valid_ratio = valid_frames / max(1, len(frames))
         tracking_detected = valid_ratio >= self.settings.word_min_valid_frame_ratio
@@ -194,8 +205,9 @@ class WordInferenceService:
                 top_predictions=[],
             )
 
+        dense_frames = fill_missing_frames(np.asarray(frames, dtype=np.float32)).tolist()
         inner_request = WordPredictRequest(
-            frames=frames,
+            frames=dense_frames,
             top_k=request.top_k,
             target_word=request.target_word,
         )

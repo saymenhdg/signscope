@@ -14,7 +14,7 @@ import type { AuthProvidersResponse, AuthResponse, AuthProviderOption, ForgotPas
 type Credentials = {
   email: string
   password: string
-  role?: 'student' | 'teacher'
+  role?: 'student' | 'teacher' | 'admin'
 }
 
 type RegisterPayload = Credentials & {

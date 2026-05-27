@@ -39,7 +39,8 @@ import { cn } from '../lib/utils'
 const LIVE_POLL_INTERVAL_MS = 360
 const LIVE_CAPTURE_MAX_WIDTH = 640
 const LIVE_CAPTURE_QUALITY = 0.84
-const ADVANCE_DELAY_MS = 900
+const ADVANCE_DELAY_MS = 1800
+const MIN_HOLD_FRAMES = 6
 
 type Mode = 'study' | 'practice'
 
@@ -83,13 +84,14 @@ export function AlphabetLessonPage() {
   const [completedLabels, setCompletedLabels] = useState<string[]>([])
   const [sessionSaved, setSessionSaved] = useState(false)
   const [lessonComplete, setLessonComplete] = useState(false)
+  const [validated, setValidated] = useState(false)
   const [, startTransition] = useTransition()
 
   const items = lesson?.sequence ?? []
   const reviewedSet = useMemo(() => new Set(reviewed), [reviewed])
   const reviewedPercent = items.length ? (reviewed.length / items.length) * 100 : 0
   const currentItem = lesson?.sequence[currentIndex] ?? null
-  const stableFrames = lesson?.stable_frames ?? 3
+  const stableFrames = Math.max(MIN_HOLD_FRAMES, lesson?.stable_frames ?? MIN_HOLD_FRAMES)
   const threshold = lesson?.threshold ?? 0.45
   const minMargin = lesson?.min_margin ?? 0.1
 
@@ -226,6 +228,7 @@ export function AlphabetLessonPage() {
     startTransition(() => {
       setStablePrediction(null)
       setStabilityCount(0)
+      setValidated(false)
     })
   }
 
@@ -270,9 +273,11 @@ export function AlphabetLessonPage() {
       startTransition(() => {
         setCorrect((value) => value + 1)
         setCompletedLabels((value) => (value.includes(currentItem.label) ? value : [...value, currentItem.label]))
+        setValidated(true)
       })
       if (advanceTimeoutRef.current !== null) window.clearTimeout(advanceTimeoutRef.current)
       advanceTimeoutRef.current = window.setTimeout(() => {
+        setValidated(false)
         if (lesson && currentIndex + 1 < lesson.sequence.length) {
           setCurrentIndex((value) => value + 1)
           committedPredictionRef.current = null
@@ -355,6 +360,7 @@ export function AlphabetLessonPage() {
     setStabilityCount(0)
     setSessionSaved(false)
     setLessonComplete(false)
+    setValidated(false)
   }
 
   function skipLetter() {
@@ -402,7 +408,7 @@ export function AlphabetLessonPage() {
           </motion.div>
         ) : (
           <motion.div key="practice" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
-            <PracticeMode lesson={lesson} health={health} currentItem={currentItem} videoRef={videoRef} canvasRef={canvasRef} cameraActive={cameraActive} cameraError={cameraError} requestError={requestError} startCamera={startCamera} stopCamera={stopCamera} restartLesson={restartLesson} skipLetter={skipLetter} result={deferredResult} lessonComplete={lessonComplete} stablePrediction={stablePrediction} liveGuess={liveGuess} completionPercent={completionPercent} stabilityPercent={stabilityPercent} stabilityCount={stabilityCount} stableFrames={stableFrames} sessionAccuracy={sessionAccuracy} currentIndex={currentIndex} attempts={attempts} correct={correct} completedLabels={completedLabels} sessionSaved={sessionSaved} />
+            <PracticeMode lesson={lesson} health={health} currentItem={currentItem} videoRef={videoRef} canvasRef={canvasRef} cameraActive={cameraActive} cameraError={cameraError} requestError={requestError} startCamera={startCamera} stopCamera={stopCamera} restartLesson={restartLesson} skipLetter={skipLetter} result={deferredResult} lessonComplete={lessonComplete} stablePrediction={stablePrediction} liveGuess={liveGuess} completionPercent={completionPercent} stabilityPercent={stabilityPercent} stabilityCount={stabilityCount} stableFrames={stableFrames} sessionAccuracy={sessionAccuracy} currentIndex={currentIndex} attempts={attempts} correct={correct} completedLabels={completedLabels} sessionSaved={sessionSaved} validated={validated} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -704,6 +710,7 @@ function PracticeMode({
   correct,
   completedLabels,
   sessionSaved,
+  validated,
 }: {
   lesson: AlphabetLessonResponse | null
   health: HealthResponse | null
@@ -731,6 +738,7 @@ function PracticeMode({
   correct: number
   completedLabels: string[]
   sessionSaved: boolean
+  validated: boolean
 }) {
   return (
     <div className="grid gap-8 xl:grid-cols-[1.35fr_0.65fr]">
@@ -752,16 +760,39 @@ function PracticeMode({
           </div>
         </div>
 
-        <Card className="overflow-hidden rounded-[32px] border-outline-variant/12 bg-surface-container-lowest/90 p-0">
+        <Card className={cn('overflow-hidden rounded-[32px] border-outline-variant/12 bg-surface-container-lowest/90 p-0 transition-all duration-500', validated && 'border-green-500/50 shadow-[0_0_40px_rgba(34,197,94,0.25)]')}>
           <div className="relative aspect-video overflow-hidden bg-[linear-gradient(180deg,#1a2237_0%,#0b1326_100%)]">
             <video ref={videoRef} className="h-full w-full scale-x-[-1] object-cover opacity-90" playsInline muted autoPlay />
+            <AnimatePresence>
+              {validated && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="absolute inset-0 flex items-center justify-center bg-green-500/15 backdrop-blur-[2px]"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+                    className="flex flex-col items-center gap-3"
+                  >
+                    <div className="flex size-20 items-center justify-center rounded-full border-2 border-green-400/60 bg-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.4)]">
+                      <CheckCircle2 className="size-10 text-green-400" />
+                    </div>
+                    <p className="font-headline text-2xl font-black tracking-tight text-green-400 drop-shadow-lg">Correct!</p>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </Card>
         <canvas ref={canvasRef} className="hidden" />
         {(cameraError ?? requestError) ? <div className="rounded-2xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-error" role="alert">{cameraError ?? requestError}</div> : null}
 
         <div className="grid gap-4 sm:grid-cols-4">
-          <LessonStat label="Target" value={currentItem?.label ?? '...'} />
+          <LessonStat label="Target" value={currentItem?.label ?? '...'} validated={validated} />
           <LessonStat label="Live Guess" value={liveGuess} />
           <LessonStat label="Stable Lock" value={stablePrediction ?? '...'} />
           <LessonStat label="Tracking" value={result ? (result.tracking_detected ? 'ON' : 'OFF') : '...'} />
@@ -812,7 +843,8 @@ function PracticeMode({
             {(lesson?.sequence ?? []).map((item, index) => {
               const completed = completedLabels.includes(item.label)
               const active = index === currentIndex && !lessonComplete
-              return <div key={item.label} className={cn('flex min-w-12 items-center justify-center rounded-2xl border px-4 py-3 font-headline text-xl font-bold transition-colors', completed && 'border-secondary/15 bg-secondary/12 text-secondary', active && 'border-primary/20 bg-primary/12 text-primary', !completed && !active && 'border-outline-variant/15 bg-surface-container-low text-on-surface-variant')}>{item.label}</div>
+              const justValidated = active && validated
+              return <div key={item.label} className={cn('flex min-w-12 items-center justify-center rounded-2xl border px-4 py-3 font-headline text-xl font-bold transition-all duration-500', justValidated && 'border-green-500/40 bg-green-500/15 text-green-400 shadow-[0_0_16px_rgba(34,197,94,0.3)]', completed && !justValidated && 'border-secondary/15 bg-secondary/12 text-secondary', active && !justValidated && 'border-primary/20 bg-primary/12 text-primary', !completed && !active && 'border-outline-variant/15 bg-surface-container-low text-on-surface-variant')}>{item.label}</div>
             })}
           </div>
           <div className="mt-7 grid gap-4 sm:grid-cols-2">
@@ -934,13 +966,13 @@ function MetricProgress({ label, value, text }: { label: string; value: number; 
   )
 }
 
-function LessonStat({ label, value }: { label: string; value: string }) {
+function LessonStat({ label, value, validated }: { label: string; value: string; validated?: boolean }) {
   return (
-    <Card className="rounded-[24px] border-outline-variant/10 bg-surface-container-low/90 p-5">
-      <p className="text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant">{label}</p>
+    <Card className={cn('rounded-[24px] border-outline-variant/10 bg-surface-container-low/90 p-5 transition-all duration-500', validated && 'border-green-500/40 bg-green-500/10 shadow-[0_0_20px_rgba(34,197,94,0.15)]')}>
+      <p className={cn('text-xs font-bold uppercase tracking-[0.24em] text-on-surface-variant transition-colors duration-500', validated && 'text-green-400')}>{label}</p>
       <div className="mt-3 flex items-center gap-3">
-        <p className="font-headline text-3xl font-black text-on-surface">{value}</p>
-        <ChevronRight className="size-4 text-secondary" />
+        <p className={cn('font-headline text-3xl font-black text-on-surface transition-colors duration-500', validated && 'text-green-400')}>{value}</p>
+        <ChevronRight className={cn('size-4 text-secondary transition-colors duration-500', validated && 'text-green-400')} />
       </div>
     </Card>
   )

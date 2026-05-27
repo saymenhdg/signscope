@@ -1,0 +1,74 @@
+{
+  "date": "2026-05-17 17:18:22",
+  "database_url": "sqlite+pysqlite:///C:/Users/15047/AppData/Local/Temp/signspeak-smoke-fbbqu882/smoke.sqlite3",
+  "checks": [
+    {
+      "name": "health",
+      "detail": "{\"status\": \"ok\", \"alphabet_model_ready\": true, \"word_model_ready\": true, \"alphabet_labels\": 26, \"word_labels\": 80}"
+    },
+    {
+      "name": "student_register",
+      "detail": "student.smoke@signspeak.local"
+    },
+    {
+      "name": "teacher_register",
+      "detail": "teacher.smoke@signspeak.local"
+    },
+    {
+      "name": "admin_login",
+      "detail": "admin.smoke@signspeak.local"
+    },
+    {
+      "name": "student_me",
+      "detail": "student"
+    },
+    {
+      "name": "alphabet_lesson",
+      "detail": "sequence=26"
+    },
+    {
+      "name": "word_vocabulary",
+      "detail": "{\"ready\": true, \"labels\": 80, \"sequence_length\": 32}"
+    },
+    {
+      "name": "teacher_profile_card",
+      "detail": "{\"is_public\": true, \"hourly_rate_usd\": 25}"
+    },
+    {
+      "name": "teacher_directory",
+      "detail": "teachers=1"
+    },
+    {
+      "name": "booking_create",
+      "detail": "{\"booking_id\": 1, \"status\": \"pending\"}"
+    },
+    {
+      "name": "teacher_schedule",
+      "detail": "bookings=1"
+    },
+    {
+      "name": "teacher_messages",
+      "detail": "threads=1"
+    },
+    {
+      "name": "teacher_send_message",
+      "detail": "messages=2"
+    },
+    {
+      "name": "admin_overview",
+      "detail": "{\"total_users\": 3, \"total_bookings\": 1, \"recent_accuracy\": 0.0}"
+    },
+    {
+      "name": "admin_users",
+      "detail": "users=3"
+    },
+    {
+      "name": "admin_classes",
+      "detail": "classes=1"
+    },
+    {
+      "name": "dashboard_overview",
+      "detail": "{\"signs_mastered\": 0, \"practice_streak\": 0, \"live_accuracy\": 0.0, \"translations_this_week\": 0, \"daily_goal_percent\": 0, \"daily_goal_remaining_minutes\": 30, \"rank_label\": \"Level 4 Learner\"}"
+    }
+  ]
+}

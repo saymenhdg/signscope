@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from api.app.config import get_settings
 from api.app.db import init_db
+from api.app.routers.admin import router as admin_router
 from api.app.routers.analytics import router as analytics_router
 from api.app.routers.auth import router as auth_router
 from api.app.routers.inference import router as inference_router
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
         ).start()
 
     app.include_router(auth_router)
+    app.include_router(admin_router)
     app.include_router(analytics_router)
     app.include_router(teacher_router)
     app.include_router(learning_router)

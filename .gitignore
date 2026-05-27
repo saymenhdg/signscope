@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .cache/
 .claude/
+.agents/
 .env
 .env.*
 !.env.example
@@ -14,6 +15,8 @@ data/
 *.pt
 *.pth
 *.onnx
+*.log
 web/node_modules/
 web/dist/
+web/test-results/
 Thumbs.db

@@ -49,6 +49,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--patience", type=int, default=12)
     parser.add_argument("--device", default=None)
     parser.add_argument(
+        "--init-checkpoint",
+        default=None,
+        help="Optional checkpoint to warm-start model weights from. Labels must match exactly.",
+    )
+    parser.add_argument(
         "--balanced-sampler",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -127,6 +132,12 @@ def main() -> None:
         dropout=args.dropout,
         attention_dim=args.attention_dim,
     )
+    if args.init_checkpoint:
+        warmstart = torch.load(args.init_checkpoint, map_location="cpu")
+        warmstart_labels = list(warmstart["labels"])
+        if warmstart_labels != labels:
+            raise ValueError("Warm-start checkpoint labels do not match current dataset labels")
+        model.load_state_dict(warmstart["model_state"], strict=True)
     model.to(device)
 
     criterion = nn.CrossEntropyLoss(
@@ -145,6 +156,8 @@ def main() -> None:
     print(f"Trainable parameters: {count_trainable_parameters(model):,}")
     if args.balanced_sampler:
         print("Using class-balanced sampling for word training")
+    if args.init_checkpoint:
+        print(f"Warm-started model weights from {args.init_checkpoint}")
 
     best_val_accuracy = -1.0
     best_checkpoint_path = artifact_dir / "best.pt"
